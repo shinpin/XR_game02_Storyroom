@@ -1,0 +1,297 @@
+body, html {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background-color: #050508;
+  font-family: 'Inter', sans-serif;
+  touch-action: none;
+}
+
+#app {
+  width: 100vw;
+  height: 100vh;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+/* --- In-Game Overlay --- */
+#game-ui {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  pointer-events: none;
+  z-index: 10;
+}
+
+#crosshair {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 12px;
+  height: 12px;
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  transition: transform 0.2s, border-color 0.2s;
+}
+
+#crosshair.active {
+  transform: translate(-50%, -50%) scale(1.5);
+  border-color: rgba(255, 200, 100, 0.9);
+  box-shadow: 0 0 10px rgba(255, 200, 100, 0.6);
+}
+
+#game-instructions {
+  position: absolute;
+  bottom: 80px;
+  width: 100%;
+  text-align: center;
+  color: rgba(255,255,255,0.7);
+  font-size: 0.9rem;
+}
+
+/* --- Navigation Map --- */
+#nav-map {
+  position: absolute;
+  top: 30px;
+  left: 30px;
+  background: rgba(10, 15, 25, 0.4);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(100, 200, 255, 0.15);
+  border-radius: 12px;
+  padding: 15px 20px;
+  color: white;
+  display: flex;
+  flex-direction: column;
+  pointer-events: none;
+}
+
+.nav-title {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.65rem;
+  letter-spacing: 2px;
+  color: #66ccff;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  border-bottom: 1px solid rgba(100, 200, 255, 0.2);
+  padding-bottom: 4px;
+}
+
+.nav-path {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.nav-point {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  opacity: 0.3;
+  transition: opacity 0.3s, transform 0.3s;
+}
+
+.nav-point.active {
+  opacity: 1;
+  transform: scale(1.05);
+  transform-origin: left center;
+}
+.nav-point.passed {
+  opacity: 0.6;
+}
+
+.nav-point .node {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1px solid white;
+  font-size: 0.7rem;
+  background: rgba(0,0,0,0.4);
+}
+
+.nav-point.active .node {
+  border-color: #ff66cc;
+  box-shadow: 0 0 10px rgba(255, 102, 204, 0.6);
+  color: #ff66cc;
+}
+.nav-point.passed .node {
+  border-color: #66ccff;
+  background: rgba(102, 204, 255, 0.2);
+  color: #66ccff;
+}
+
+.nav-point .lbl {
+  font-size: 0.8rem;
+  letter-spacing: 1px;
+}
+
+.nav-point.active .lbl {
+  color: #fff;
+  text-shadow: 0 0 5px rgba(255,255,255,0.5);
+  font-weight: 600;
+}
+
+.nav-link {
+  width: 2px;
+  height: 18px;
+  background: rgba(255,255,255,0.2);
+  margin-left: 11px; /* Center under the 24px node */
+  transition: background 0.3s;
+}
+.nav-link.passed {
+  background: rgba(102, 204, 255, 0.6);
+  box-shadow: 0 0 5px #66ccff;
+}
+
+/* --- Main Menu Overlay (Neon Coaster Style) --- */
+#menu-overlay {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 100;
+  background: radial-gradient(circle at center, rgba(10,20,40,0.4) 0%, rgba(5,10,20,0.9) 100%);
+  color: white;
+  pointer-events: auto; /* Catch clicks */
+}
+
+/* Top corner tags */
+.top-bar {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  right: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.debug-tag {
+  border: 1px dotted #888;
+  border-radius: 20px;
+  padding: 4px 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 1px;
+  background: rgba(0,0,0,0.4);
+}
+.debug-tag span {
+  color: #a0c0ff;
+}
+
+.version-tag {
+  text-align: right;
+  font-size: 0.75rem;
+  color: #a0a0c0;
+  line-height: 1.4;
+}
+.version-tag strong {
+  color: #66e0ff;
+  font-size: 0.85rem;
+}
+
+/* Center Form Panel */
+.glass-panel {
+  background: rgba(10, 12, 25, 0.7);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255,255,255,0.05);
+  border-radius: 16px;
+  padding: 3rem 4rem;
+  max-width: 600px;
+  text-align: center;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+}
+
+.glass-panel .title {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 3rem;
+  margin: 0;
+  color: #fff;
+  text-shadow: 0 0 10px rgba(100, 200, 255, 0.5), 0 0 20px rgba(100, 150, 255, 0.3);
+  background: linear-gradient(90deg, #66ccff, #cc88ff);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.glass-panel .subtitle {
+  font-size: 0.9rem;
+  color: #a0b0d0;
+  margin-bottom: 2rem;
+  letter-spacing: 0.5px;
+}
+
+/* Select Box */
+.controls-grid {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.control-group {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  border-bottom: 1px solid rgba(100, 200, 255, 0.2);
+  padding-bottom: 5px;
+  width: 250px;
+}
+
+.control-group label {
+  font-size: 0.7rem;
+  color: #66ccff;
+  text-transform: uppercase;
+  margin-bottom: 5px;
+  letter-spacing: 1px;
+}
+
+.control-group select {
+  background: transparent;
+  color: #fff;
+  border: none;
+  font-size: 1rem;
+  font-family: inherit;
+  outline: none;
+  cursor: pointer;
+}
+.control-group select option {
+  background: #111;
+  color: #fff;
+}
+
+/* Glowing Start Button */
+.glow-btn {
+  background: linear-gradient(90deg, #ff66cc, #4488ff);
+  border: none;
+  border-radius: 30px;
+  padding: 12px 30px;
+  color: white;
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 700;
+  font-size: 1.1rem;
+  letter-spacing: 2px;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: 0 0 20px rgba(255, 100, 200, 0.4);
+  text-transform: uppercase;
+  min-width: 250px;
+}
+.glow-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 30px rgba(100, 150, 255, 0.6);
+}
+
+.hint-text {
+  font-size: 0.75rem;
+  color: #888;
+  margin-top: 1.5rem;
+}

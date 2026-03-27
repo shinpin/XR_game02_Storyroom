@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <title>XR ADVENTURE</title>
+    <!-- Modern premium font identical to the Neon Coaster request -->
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/style.css">
+  </head>
+  <body>
+    <!-- 3D Canvas Container -->
+    <div id="app"></div>
+
+    <!-- Active Game In-World UI -->
+    <div id="game-ui" style="display: none;">
+      <!-- Navigation Tracking Map -->
+      <div id="nav-map">
+        <div class="nav-title">JOURNEY PROGRESS</div>
+        <div class="nav-path">
+          <div class="nav-point" id="nav-val-1"><div class="node">1</div><div class="lbl">Water Island</div></div>
+          <div class="nav-link" id="nav-link-1"></div>
+          <div class="nav-point" id="nav-val-2"><div class="node">2</div><div class="lbl">Time Dial</div></div>
+          <div class="nav-link" id="nav-link-2"></div>
+          <div class="nav-point" id="nav-val-3"><div class="node">3</div><div class="lbl">Ancient Tomb</div></div>
+          <div class="nav-link" id="nav-link-3"></div>
+          <div class="nav-point" id="nav-val-4"><div class="node">4</div><div class="lbl">Giant's Void</div></div>
+          <div class="nav-link" id="nav-link-4"></div>
+          <div class="nav-point" id="nav-val-5"><div class="node">5</div><div class="lbl">Twin Gods</div></div>
+        </div>
+      </div>
+
+      <div id="crosshair"></div>
+      <div id="game-instructions">Look around & Click to use Telekinesis. Walk into glowing doors to proceed.</div>
+    </div>
+
+    <!-- Main Menu Overlay -->
+    <div id="menu-overlay">
+      <!-- Top Tags -->
+      <div class="top-bar">
+        <div class="debug-tag"><span>[D] DEBUG</span></div>
+        <div class="version-tag">
+          <strong>v1.0.0 Alpha</strong><br/>
+          FLYCHAIR LAB | CREATOR: BEN<br/>
+          2026.03.26
+        </div>
+      </div>
+
+      <!-- Center Glass Panel -->
+      <div class="glass-panel">
+        <h1 class="title">XR Adventure</h1>
+        <p class="subtitle">A 5-part spatial journey.</p>
+        
+        <div class="controls-grid">
+          <div class="control-group">
+            <label>SCENE (場景)</label>
+            <select id="level-select">
+              <option value="1">1. Water Island (水之浮島)</option>
+              <option value="2">2. The Firefly Dial (螢火時盤)</option>
+              <option value="3">3. The Wizard's Chamber (古墓棋盤)</option>
+              <option value="4">4. Giant's Void (虛空石階)</option>
+              <option value="5">5. Twin God Doors (神之門)</option>
+            </select>
+          </div>
+        </div>
+
+        <button id="start-btn" class="glow-btn">START ADVENTURE</button>
+        <p class="hint-text">Hint: Choose a chapter from the dropdown or just hit Start.</p>
+      </div>
+    </div>
+
+    <script type="module" src="/main.js"></script>
+  </body>
+</html>
