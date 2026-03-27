@@ -195,10 +195,16 @@ function loadLevel1() {
     scene.fog.color.setHex(0xaaaaaa); 
     scene.fog.density = 0.01;
     
-    // Island (The only ground)
-    const island = new THREE.Mesh(new THREE.CylinderGeometry(15, 18, 2, 32), matGrass);
-    island.position.y = 0;
-    createPhysicsObject(island, new CANNON.Cylinder(15, 18, 2, 16), 0);
+    // Water Floor
+    const water = new THREE.Mesh(new THREE.PlaneGeometry(100, 100), matWater);
+    water.rotation.x = -Math.PI / 2;
+    water.position.y = -1;
+    levelGroup.add(water);
+
+    // Floating Island 
+    const island = new THREE.Mesh(new THREE.CylinderGeometry(15, 10, 4, 32), matGrass);
+    island.position.y = -0.5;
+    createPhysicsObject(island, new CANNON.Cylinder(15, 10, 4, 16), 0);
     
     // Giant Tree
     const trunk = new THREE.Mesh(new THREE.CylinderGeometry(2, 3, 10, 8), matWood);
@@ -231,10 +237,11 @@ function loadLevel2() {
     scene.fog.color.setHex(0x020510);
     scene.fog.density = 0.005; // less fog to see the sky
     
-    // Central Platform (The only ground)
-    const plat = new THREE.Mesh(new THREE.BoxGeometry(20, 1.5, 20), matStone);
-    plat.position.y = -0.25;
-    createPhysicsObject(plat, new CANNON.Box(new CANNON.Vec3(10, 0.75, 10)), 0);
+    // Floating Sky Island
+    const platGeo = new THREE.CylinderGeometry(15, 8, 4, 8); // Octagon floating rock
+    const plat = new THREE.Mesh(platGeo, matStone);
+    plat.position.y = -0.75;
+    createPhysicsObject(plat, new CANNON.Cylinder(15, 8, 4, 8), 0);
     
     // Fireflies (Particles)
     const fireflyGeo = new THREE.BufferGeometry();
