@@ -59,6 +59,10 @@ export function initPlayer() {
             if (intersects[0].object.userData.dialogText) {
                 showDialog(intersects[0].object.userData.dialogText);
                 intersects[0].object.userData.dialogText = null; 
+            } else if (intersects[0].object.userData.dialogData) {
+                const data = intersects[0].object.userData.dialogData;
+                showDialog(data.text, data.options);
+                intersects[0].object.userData.dialogData = null; 
             }
 
             const targetPos = new THREE.Vector3();

@@ -69,16 +69,36 @@ export function loadLevel1() {
     // Memory Crystals (Interactive puzzle elements)
     const crystalGeo = new THREE.OctahedronGeometry(0.5);
     const crystalMat = new THREE.MeshStandardMaterial({ color: 0x00ffff, emissive: 0x0088cc, emissiveIntensity: 2, transparent: true, opacity: 0.8 });
-    const crystalDialogs = [
-        "這是一塊記憶碎片。我好像曾在那棵樹下睡著...",
-        "發光的水母... 是牠們帶我來這裡的。",
-        "還有誰在等我回家嗎？"
-    ];
     
     for(let i=0; i<3; i++) {
-        const crystal = new THREE.Mesh(crystalGeo, crystalMat);
+        const crystal = new THREE.Mesh(crystalGeo, crystalMat.clone()); // clone material so each can change independently
         crystal.position.set((Math.random()-0.5)*20, -2, (Math.random()-0.5)*20 + 5);
-        crystal.userData.dialogText = crystalDialogs[i];
+        
+        const crystalDialogs = [
+            {
+                text: "這是一塊閃爍著微光的記憶碎片... 裡面似乎封存著一段呢喃：\n「我好像曾在那棵巨大得不合常理的樹下睡著... 然後世界就變成了這樣。」\n\n你要試著去觸碰並吸收這段記憶嗎？",
+                options: [
+                    { text: "【觸碰碎片】吸收這段遺失的記憶", action: () => { crystal.material.emissiveIntensity = 4; } },
+                    { text: "【轉身離開】先不要去碰", action: () => {} }
+                ]
+            },
+            {
+                text: "水母的光芒映照在這塊碎片上... 耳邊響起細雨的聲音：\n「發光的水滴... 是牠們帶我來這裡的。如果跟著水流走，是不是就能回到熟悉的那個房間？」",
+                options: [
+                    { text: "【跟隨光芒】感受水流的溫度", action: () => { crystal.material.color.setHex(0xaaccff); } },
+                    { text: "【保持警戒】退後一步觀察", action: () => {} }
+                ]
+            },
+            {
+                text: "碎片散發著孤獨且冰冷的光...\n「還有誰在等我回家嗎？那個總會在門口叫我吃飯的聲音，越來越模糊了... 我不能就在這裡停下來。」",
+                options: [
+                    { text: "【輕輕閉眼】試著用力回想那個聲音", action: () => { crystal.material.emissiveIntensity = 6; } },
+                    { text: "【睜開雙眼】看著眼前這片不真實的風景", action: () => {} }
+                ]
+            }
+        ];
+
+        crystal.userData.dialogData = crystalDialogs[i];
         
         // Add floating animation updatable
         const initY = crystal.position.y;

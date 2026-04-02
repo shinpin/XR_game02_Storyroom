@@ -11,7 +11,8 @@ import { loadLevel2 } from './src/levels/level2.js';
 import { loadLevel3 } from './src/levels/level3.js';
 import { loadLevel4 } from './src/levels/level4.js';
 import { loadLevel5 } from './src/levels/level5.js';
-import { isAutoMode, updateNarrative, initNarrative, startAutoNarrative, stopAutoNarrative } from './src/narrative.js';
+import { isAutoMode, updateNarrative, initNarrative, startAutoNarrative, stopAutoNarrative, sequences } from './src/narrative.js';
+import { isIntroCinematic, setIntroCinematic, showDialog, hideDialog } from './src/state.js';
 import { isNoclip, initEditor } from './src/editor.js';
 
 const levelLoaders = [null, loadLevel1, loadLevel2, loadLevel3, loadLevel4, loadLevel5];
@@ -39,17 +40,54 @@ initNarrative((levelIdx) => {
 const gameUI = document.getElementById('game-ui');
 const menuOverlay = document.getElementById('menu-overlay');
 
+let introStartTime = 0;
+let introStartRotY = 0;
+let introDuration = 8;
+
+function startLevelIntro(idx) {
+    if (isAutoMode) return;
+    setIntroCinematic(true);
+    // ensure clock is running 
+    if(!clock.running) clock.start();
+    introStartTime = clock.elapsedTime;
+    introStartRotY = camera.rotation.y;
+    controls.unlock();
+    
+    // subtitle box cinematic display
+    const seq = sequences[idx - 1];
+    if (seq) {
+        // Calculate duration based on 180ms per character + 3 seconds reading time
+        const textToType = seq.text + "\n\n(按空白鍵跳過演出)";
+        introDuration = (textToType.length * 0.18) + 3;
+        showDialog(textToType, introDuration * 1000);
+    } else {
+        introDuration = 8;
+    }
+}
+
+document.addEventListener('keydown', (e) => {
+    if (isIntroCinematic && (e.code === 'Space' || e.key === 'Escape')) {
+        setIntroCinematic(false);
+        hideDialog();
+        controls.lock();
+    }
+});
+
+document.addEventListener('unlockControlsForDialog', () => {
+    controls.unlock();
+});
+
 document.getElementById('start-btn').addEventListener('click', () => {
     menuOverlay.style.display = 'none';
     gameUI.style.display = 'block';
     
-    // Load level dynamically based on UI selection
     const selectedLvl = parseInt(document.getElementById('level-select').value);
     if(levelLoaders[selectedLvl]) {
         levelLoaders[selectedLvl]();
+        startLevelIntro(selectedLvl);
+    } else {
+        controls.lock();
     }
-    
-    controls.lock();
 });
 
 document.getElementById('auto-btn').addEventListener('click', () => {
@@ -65,9 +103,9 @@ for (let i = 1; i <= 5; i++) {
         mapZone.addEventListener('click', () => {
             if (levelLoaders[i]) {
                 levelLoaders[i]();
-                // Sync select box
                 const selectBox = document.getElementById('level-select');
                 if (selectBox) selectBox.value = i;
+                startLevelIntro(i);
             }
         });
     }
@@ -107,6 +145,21 @@ renderer.setAnimationLoop(() => {
         // Add a gentle stepping bob and tail wag
         catGroup.position.y += Math.sin(clock.elapsedTime * 10) * 0.04;
         catTail.rotation.z = Math.sin(clock.elapsedTime * 8) * 0.25;
+    } else if (isIntroCinematic) {
+        const elapsed = clock.elapsedTime - introStartTime;
+        if (elapsed < introDuration) {
+            camera.rotation.y = introStartRotY + (elapsed * 0.15); // Slower pan
+            playerBody.position.set(camera.position.x, levelState.playerBaseY || 0.5, camera.position.z);
+            const yaw = camera.rotation.y;
+            const floorY = (levelState.playerBaseY || 0.5) - 0.5;
+            const forwardOffset = new THREE.Vector3(0, 0, -1.8).applyAxisAngle(new THREE.Vector3(0,1,0), yaw);
+            catGroup.position.set(camera.position.x + forwardOffset.x, floorY, camera.position.z + forwardOffset.z);
+            catGroup.rotation.y = yaw;
+        } else {
+            setIntroCinematic(false);
+            hideDialog();
+            controls.lock();
+        }
     } else {
         if (!controls.isLocked && menuOverlay.style.display !== 'none') {
              camera.rotation.y += dt * 0.1; 

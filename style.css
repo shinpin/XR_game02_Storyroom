@@ -651,6 +651,36 @@ body, html {
   to { opacity: 1; transform: translateY(0); }
 }
 
+.dialogue-options {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+  margin-top: 15px;
+  flex-wrap: wrap;
+}
+
+.dialog-option-btn {
+  background: rgba(20, 25, 40, 0.6);
+  border: 1px solid rgba(120, 150, 200, 0.3);
+  border-radius: 6px;
+  padding: 8px 16px;
+  color: #cceeff;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.95rem;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  pointer-events: auto; /* enable clicks */
+}
+
+.dialog-option-btn:hover {
+  background: rgba(30, 40, 60, 0.8);
+  border-color: rgba(180, 210, 255, 0.7);
+  box-shadow: 0 0 10px rgba(120, 160, 255, 0.3), inset 0 0 5px rgba(120, 160, 255, 0.1);
+  color: #ffffff;
+  transform: translateY(-2px);
+}
+
 /* --- Director Editor UI --- */
 #editor-ui {
   position: absolute;
