@@ -66,6 +66,41 @@ export function loadLevel1() {
         }
     }
 
+    // Memory Crystals (Interactive puzzle elements)
+    const crystalGeo = new THREE.OctahedronGeometry(0.5);
+    const crystalMat = new THREE.MeshStandardMaterial({ color: 0x00ffff, emissive: 0x0088cc, emissiveIntensity: 2, transparent: true, opacity: 0.8 });
+    const crystalDialogs = [
+        "這是一塊記憶碎片。我好像曾在那棵樹下睡著...",
+        "發光的水母... 是牠們帶我來這裡的。",
+        "還有誰在等我回家嗎？"
+    ];
+    
+    for(let i=0; i<3; i++) {
+        const crystal = new THREE.Mesh(crystalGeo, crystalMat);
+        crystal.position.set((Math.random()-0.5)*20, -2, (Math.random()-0.5)*20 + 5);
+        crystal.userData.dialogText = crystalDialogs[i];
+        
+        // Add floating animation updatable
+        const initY = crystal.position.y;
+        const offset = Math.random() * 10;
+        levelState.updatables.push((dt) => {
+            const time = performance.now() * 0.002;
+            crystal.position.y = initY + Math.sin(time + offset) * 0.5;
+            crystal.rotation.y += dt;
+            crystal.rotation.x += dt * 0.5;
+            // Update physics body to match floating unless dragged
+            if(crystal.userData.physicsBody) {
+                if(crystal.userData.physicsBody.sleepState === CANNON.Body.SLEEPING) {
+                    crystal.userData.physicsBody.position.copy(crystal.position);
+                    crystal.userData.physicsBody.quaternion.copy(crystal.quaternion);
+                }
+            }
+        });
+        
+        createPhysicsObject(crystal, new CANNON.Box(new CANNON.Vec3(0.5, 0.5, 0.5)), 1, true);
+    }
+
+
     const fishGroup = new THREE.Group();
     levelGroup.add(fishGroup);
     

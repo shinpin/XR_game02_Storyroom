@@ -11,17 +11,29 @@ import { loadLevel2 } from './src/levels/level2.js';
 import { loadLevel3 } from './src/levels/level3.js';
 import { loadLevel4 } from './src/levels/level4.js';
 import { loadLevel5 } from './src/levels/level5.js';
+import { isAutoMode, updateNarrative, initNarrative, startAutoNarrative, stopAutoNarrative } from './src/narrative.js';
+import { isNoclip, initEditor } from './src/editor.js';
 
 const levelLoaders = [null, loadLevel1, loadLevel2, loadLevel3, loadLevel4, loadLevel5];
+
+
 
 // Initialize Game Engine
 initCore();
 initAudio();
 initPhysics();
 initPlayer();
+initEditor();
+
 
 // Add VR Button 
 document.body.appendChild(VRButton.createButton(renderer));
+
+// Auto Narrative Setup
+initNarrative((levelIdx) => {
+    if(levelLoaders[levelIdx]) levelLoaders[levelIdx]();
+});
+
 
 // UI Setup
 const gameUI = document.getElementById('game-ui');
@@ -40,60 +52,98 @@ document.getElementById('start-btn').addEventListener('click', () => {
     controls.lock();
 });
 
+document.getElementById('auto-btn').addEventListener('click', () => {
+    menuOverlay.style.display = 'none';
+    gameUI.style.display = 'block';
+    startAutoNarrative();
+});
+
 controls.addEventListener('unlock', () => {
+    if (isAutoMode) stopAutoNarrative();
     gameUI.style.display = 'none';
     menuOverlay.style.display = 'flex';
 });
 
+
 // Render Loop
 const clock = new THREE.Clock();
-const moveSpeed = 6;
+const moveSpeed = 4.5;
 const telekDistance = 5;
 
 renderer.setAnimationLoop(() => {
     const dt = Math.min(clock.getDelta(), 0.1);
     
-    if (!controls.isLocked && menuOverlay.style.display !== 'none') {
-         camera.rotation.y += dt * 0.1; 
-    }
+    if (isAutoMode) {
+        updateNarrative(dt);
+        
+        // Auto cat animation
+        const yaw = camera.rotation.y;
+        const floorY = (levelState.playerBaseY || 0.5) - 0.5; 
+        const forwardOffset = new THREE.Vector3(0, 0, -1.8).applyAxisAngle(new THREE.Vector3(0,1,0), yaw);
+        
+        const targetPos = new THREE.Vector3(camera.position.x + forwardOffset.x, floorY, camera.position.z + forwardOffset.z);
+        // Smoothly lerp the cat to look like it's walking forward instead of rigidly snapping
+        catGroup.position.lerp(targetPos, dt * 5); 
+        
+        // Smooth rotation
+        const targetRot = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0), yaw);
+        catGroup.quaternion.slerp(targetRot, dt * 5);
 
-    if (controls.isLocked) {
-        if (keys.w) controls.moveForward(moveSpeed * dt);
-        if (keys.s) controls.moveForward(-moveSpeed * dt);
-        if (keys.a) controls.moveRight(-moveSpeed * dt);
-        if (keys.d) controls.moveRight(moveSpeed * dt);
-        
-        playerBody.position.set(camera.position.x, levelState.playerBaseY || 0.5, camera.position.z);
-        
-        const bob = Math.sin(clock.elapsedTime * 8) * 0.04;
-        const baseBob = (keys.w||keys.s||keys.a||keys.d) ? bob : 0;
-        
-        if(!constraint) {
-            const yaw = camera.rotation.y;
-            const floorY = (levelState.playerBaseY || 0.5) - 0.5; 
-            const forwardOffset = new THREE.Vector3(0, 0, -1.8).applyAxisAngle(new THREE.Vector3(0,1,0), yaw);
-            
-            catGroup.position.set(camera.position.x + forwardOffset.x, floorY + baseBob, camera.position.z + forwardOffset.z);
-            catGroup.rotation.y = yaw;
-            
-            if (keys.w||keys.s||keys.a||keys.d) {
-                 catTail.rotation.z = Math.sin(clock.elapsedTime * 15) * 0.2;
-            } else {
-                 catTail.rotation.z = Math.sin(clock.elapsedTime * 2) * 0.1;
-            }
+        // Add a gentle stepping bob and tail wag
+        catGroup.position.y += Math.sin(clock.elapsedTime * 10) * 0.04;
+        catTail.rotation.z = Math.sin(clock.elapsedTime * 8) * 0.25;
+    } else {
+        if (!controls.isLocked && menuOverlay.style.display !== 'none') {
+             camera.rotation.y += dt * 0.1; 
         }
 
-        if (levelState.doorTriggerBody) {
-            const dx = camera.position.x - levelState.doorTriggerBody.position.x;
-            const dz = camera.position.z - levelState.doorTriggerBody.position.z;
-            const dist = Math.sqrt(dx*dx + dz*dz);
-            if (dist < 2.0) { 
-                if(levelLoaders[levelState.nextLevelParams]) {
-                   levelLoaders[levelState.nextLevelParams](); 
+        if (controls.isLocked || (isNoclip && document.getElementById('editor-ui').style.display === 'block')) {
+            if (keys.w) controls.moveForward(moveSpeed * dt);
+            if (keys.s) controls.moveForward(-moveSpeed * dt);
+            if (keys.a) controls.moveRight(-moveSpeed * dt);
+            if (keys.d) controls.moveRight(moveSpeed * dt);
+            
+            if (isNoclip) {
+                if (keys.q) camera.position.y += moveSpeed * dt;
+                if (keys.e) camera.position.y -= moveSpeed * dt;
+                // Pin playerBody to camera so it doesn't fall away
+                playerBody.position.copy(camera.position);
+                playerBody.velocity.set(0, 0, 0);
+            } else {
+                playerBody.position.set(camera.position.x, levelState.playerBaseY || 0.5, camera.position.z);
+            }
+            
+            const bob = (isNoclip) ? 0 : Math.sin(clock.elapsedTime * 8) * 0.04;
+            const baseBob = (keys.w||keys.s||keys.a||keys.d) ? bob : 0;
+            
+            if(!constraint) {
+                const yaw = camera.rotation.y;
+                const floorY = (isNoclip) ? camera.position.y - 0.5 : (levelState.playerBaseY || 0.5) - 0.5; 
+                const forwardOffset = new THREE.Vector3(0, 0, -1.8).applyAxisAngle(new THREE.Vector3(0,1,0), yaw);
+                
+                catGroup.position.set(camera.position.x + forwardOffset.x, floorY + baseBob, camera.position.z + forwardOffset.z);
+                catGroup.rotation.y = yaw;
+                
+                if (keys.w||keys.s||keys.a||keys.d) {
+                     catTail.rotation.z = Math.sin(clock.elapsedTime * 15) * 0.2;
+                } else {
+                     catTail.rotation.z = Math.sin(clock.elapsedTime * 2) * 0.1;
+                }
+            }
+
+            if (levelState.doorTriggerBody) {
+                const dx = camera.position.x - levelState.doorTriggerBody.position.x;
+                const dz = camera.position.z - levelState.doorTriggerBody.position.z;
+                const dist = Math.sqrt(dx*dx + dz*dz);
+                if (dist < 2.0) { 
+                    if(levelLoaders[levelState.nextLevelParams]) {
+                       levelLoaders[levelState.nextLevelParams](); 
+                    }
                 }
             }
         }
     }
+
     
     if (constraint) {
         const targetPos = new THREE.Vector3();

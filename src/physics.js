@@ -9,6 +9,13 @@ const physicsMatConfig = new CANNON.ContactMaterial(physicsMaterial, physicsMate
 export function initPhysics() {
     world.broadphase = new CANNON.SAPBroadphase(world);
     world.addContactMaterial(physicsMatConfig);
+    
+    // Stability and Performance Optimization
+    world.solver.iterations = 50; 
+    world.solver.tolerance = 0.001; 
+    world.allowSleep = true;
+    world.defaultContactMaterial.friction = 0.6;
+    world.defaultContactMaterial.restitution = 0.1;
 }
 
 // Ensure physics run loop

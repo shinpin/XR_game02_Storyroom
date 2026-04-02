@@ -3,8 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-    <title>XR ADVENTURE</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>小貓咪的旅程 - XR Adventure</title>
     <!-- Modern premium font identical to the Neon Coaster request -->
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/style.css">
@@ -14,7 +14,23 @@
     <div id="app"></div>
 
     <!-- Active Game In-World UI -->
-    <div id="game-ui" style="display: none;">
+    <div id="game-ui" class="hidden-element">
+      <!-- Cinematic Overlay (Hidden by default) -->
+      <div id="cinematic-overlay" class="hidden-element">
+        <div class="letterbox top"></div>
+        <div class="subtitle-container">
+          <p id="cinematic-subtitle"></p>
+        </div>
+        <div class="letterbox bottom"></div>
+      </div>
+
+      <!-- Dialogue Overlay (For in-game interactions) -->
+      <div id="dialogue-box" class="hidden-element">
+        <div class="dialogue-content">
+          <p id="dialogue-text"></p>
+        </div>
+      </div>
+
       <!-- Navigation Tracking Map -->
       <div id="nav-map">
         <div class="nav-title">JOURNEY PROGRESS</div>
@@ -39,7 +55,7 @@
     <div id="menu-overlay">
       <!-- Top Tags -->
       <div class="top-bar">
-        <div class="debug-tag"><span>[D] DEBUG</span></div>
+        <div class="debug-tag" id="btn-debug" class="clickable"><span>[D] DIRECTOR</span></div>
         <div class="version-tag">
           <strong>v1.0.0 Alpha</strong><br/>
           FLYCHAIR LAB | CREATOR: BEN<br/>
@@ -55,7 +71,7 @@
         <div class="controls-grid">
           <div class="control-group">
             <label>SCENE (場景)</label>
-            <select id="level-select">
+            <select id="level-select" aria-label="Level Select" title="Level Select">
               <option value="1">1. 水燈大樹</option>
               <option value="2">2. The Firefly Dial (螢火時盤)</option>
               <option value="3">3. The Wizard's Chamber (古墓棋盤)</option>
@@ -66,10 +82,53 @@
         </div>
 
         <button id="start-btn" class="glow-btn">START ADVENTURE</button>
+        <br/><br/>
+        <button id="auto-btn" class="glow-btn auto-btn">AUTO NARRATIVE (觀影展示)</button>
         <p class="hint-text">Hint: Choose a chapter from the dropdown or just hit Start.</p>
       </div>
     </div>
 
+    <!-- Sequence Editor UI -->
+    <div id="editor-ui" class="hidden-element">
+      <h2 class="editor-header">導演分鏡編輯器
+        <button id="btn-close-editor" class="close-btn" title="收起面版">&times;</button>
+      </h2>
+      <label>Noclip (自由飛行, Q升E降)
+        <input type="checkbox" id="noclip-toggle">
+      </label>
+      <hr class="editor-hr"/>
+      <label>Level (關卡 1~5)
+        <input type="number" id="ed-level" value="1" min="1" max="5" aria-label="Editor Level" title="Editor Level">
+      </label>
+      <label>Duration (秒數)
+        <input type="number" id="ed-duration" value="15" aria-label="Editor Duration" title="Editor Duration">
+      </label>
+      <label>Subtitle (對白)
+        <textarea id="ed-text" rows="3" aria-label="Editor Subtitle" title="Editor Subtitle"></textarea>
+      </label>
+      <div class="ed-flex">
+        <button id="btn-mark-start" class="ed-btn">📍 存起點</button>
+        <button id="btn-mark-end" class="ed-btn">🏁 存終點</button>
+      </div>
+      <p id="ed-status">等待紀錄...</p>
+      
+      <button id="btn-add-seq" class="ed-btn main-btn">➕ 新增至腳本</button>
+      <hr class="editor-hr"/>
+      
+      <h3 class="editor-subheader">緩存清單 (<span id="ed-count">0</span> 段)</h3>
+      <button id="btn-export" class="ed-btn export-btn">匯出程式碼 (Export)</button>
+    </div>
+
+    <!-- Export Modal -->
+    <div id="export-modal" class="modal-overlay" style="display:none;">
+      <div class="export-content">
+        <h3 class="export-title">請複製下方內容，貼上覆蓋 src/narrative.js 裡的 sequences 陣列</h3>
+        <textarea id="export-code" readonly></textarea>
+        <button id="btn-close-export" class="ed-btn top-margin-btn">關閉視窗</button>
+      </div>
+    </div>
+
     <script type="module" src="/main.js"></script>
+
   </body>
 </html>

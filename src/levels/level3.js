@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { scene } from '../core.js';
 import { clearLevel, updateNavMap, createPhysicsObject, createLevelDoor } from '../levelManager.js';
-import { levelState, levelGroup } from '../state.js';
+import { levelState, levelGroup, showDialog } from '../state.js';
 import { world, physicsMaterial } from '../physics.js';
 
 export function loadLevel3() {
@@ -125,5 +125,40 @@ export function loadLevel3() {
         createPhysicsObject(mr, new CANNON.Box(new CANNON.Vec3(0.6, 1.25, 0.6)), 30, true);
     }
 
-    createLevelDoor(0, 0.5, -roomDepthLength + 0.1, 4);
+    // Pressure Plate Puzzle
+    const plateGeo = new THREE.BoxGeometry(3, 0.2, 3);
+    const plateMat = new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0x550000, emissiveIntensity: 1 });
+    const plate = new THREE.Mesh(plateGeo, plateMat);
+    const targetZ = -roomDepthLength + 5;
+    plate.position.set(0, -0.4, targetZ);
+    levelGroup.add(plate);
+
+    let doorUnlocked = false;
+
+    levelState.updatables.push((dt) => {
+        if(doorUnlocked) return;
+        let pressed = false;
+        for (const obj of levelState.rigidBodies) {
+            if (obj.body.mass > 0) {
+                const dist = Math.sqrt(
+                    Math.pow(obj.body.position.x - plate.position.x, 2) + 
+                    Math.pow(obj.body.position.z - plate.position.z, 2)
+                );
+                if (dist < 2.0 && obj.body.position.y < 2.0) {
+                    pressed = true;
+                    break;
+                }
+            }
+        }
+        
+        if (pressed) {
+            plateMat.color.setHex(0x00ff00);
+            plateMat.emissive.setHex(0x008800);
+            doorUnlocked = true;
+            createLevelDoor(0, 0.5, -roomDepthLength + 0.1, 4);
+            showDialog('祭壇感應到實體... 古老的遺忘之門開啟了。');
+        }
+    });
+
 }
+

@@ -3,7 +3,11 @@ import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment
 
 export const scene = new THREE.Scene();
 export const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100);
-export const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+export const renderer = new THREE.WebGLRenderer({ 
+    antialias: true, 
+    alpha: false,
+    powerPreference: "high-performance"
+});
 export const textureLoader = new THREE.TextureLoader();
 
 export let defaultEnv;
@@ -17,6 +21,10 @@ export function initCore() {
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    // Cinematic Rendering Upgrades
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.0;
+    
     renderer.xr.enabled = true;
     document.getElementById('app').appendChild(renderer.domElement);
 

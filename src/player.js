@@ -3,7 +3,7 @@ import * as CANNON from 'cannon-es';
 import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js';
 import { camera, scene } from './core.js';
 import { world, physicsMaterial } from './physics.js';
-import { levelState } from './state.js';
+import { levelState, showDialog } from './state.js';
 
 export let controls;
 export let catGroup;
@@ -55,6 +55,11 @@ export function initPlayer() {
         if (intersects.length > 0) {
             draggedBody = intersects[0].object.userData.physicsBody;
             draggedBody.wakeUp();
+
+            if (intersects[0].object.userData.dialogText) {
+                showDialog(intersects[0].object.userData.dialogText);
+                intersects[0].object.userData.dialogText = null; 
+            }
 
             const targetPos = new THREE.Vector3();
             camera.getWorldDirection(targetPos);
@@ -110,3 +115,22 @@ function setupCatAvatar() {
 
     scene.add(catGroup);
 }
+
+export function setCatColor(colorHex) {
+    if(catGroup) {
+        catGroup.traverse((child) => {
+            if(child.isMesh && child.material) {
+                child.material.color.setHex(colorHex);
+                if (colorHex === 0xffcc00) {
+                    child.material.emissive.setHex(0xaa6600);
+                    child.material.emissiveIntensity = 0.5;
+                } else {
+                    child.material.emissive.setHex(0x000000);
+                    child.material.emissiveIntensity = 0;
+                }
+                child.material.needsUpdate = true;
+            }
+        });
+    }
+}
+
