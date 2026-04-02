@@ -318,18 +318,26 @@ body, html {
   border-radius: 14px;
   padding: 8px;
   z-index: 5;
-  pointer-events: none;
+  pointer-events: auto;
   box-shadow: 0 8px 32px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.04);
 }
 
 #nav-svg {
-  width: 160px;
-  height: 172px;
+  width: 208px;
+  height: 224px;
   display: block;
   overflow: visible;
 }
 
 /* Zone shapes - default: dark/unexplored */
+.map-zone {
+  cursor: pointer;
+}
+.map-zone:hover .zone-shape {
+  stroke: rgba(255, 255, 255, 0.8);
+  filter: brightness(1.3);
+}
+
 .map-zone .zone-shape {
   fill: rgba(40, 50, 70, 0.55);
   stroke: rgba(100, 130, 180, 0.22);

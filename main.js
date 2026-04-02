@@ -58,6 +58,21 @@ document.getElementById('auto-btn').addEventListener('click', () => {
     startAutoNarrative();
 });
 
+// Map Interactions Setup
+for (let i = 1; i <= 5; i++) {
+    const mapZone = document.getElementById(`nav-val-${i}`);
+    if (mapZone) {
+        mapZone.addEventListener('click', () => {
+            if (levelLoaders[i]) {
+                levelLoaders[i]();
+                // Sync select box
+                const selectBox = document.getElementById('level-select');
+                if (selectBox) selectBox.value = i;
+            }
+        });
+    }
+}
+
 controls.addEventListener('unlock', () => {
     if (isAutoMode) stopAutoNarrative();
     gameUI.style.display = 'none';
