@@ -12,7 +12,7 @@ import { loadLevel3 } from './src/levels/level3.js';
 import { loadLevel4 } from './src/levels/level4.js';
 import { loadLevel5 } from './src/levels/level5.js';
 import { isAutoMode, updateNarrative, initNarrative, startAutoNarrative, stopAutoNarrative, sequences } from './src/narrative.js';
-import { isIntroCinematic, setIntroCinematic, showDialog, hideDialog } from './src/state.js';
+import { isIntroCinematic, setIntroCinematic, showDialog, hideDialog, showBigTitle } from './src/state.js';
 import { isNoclip, initEditor } from './src/editor.js';
 
 const levelLoaders = [null, loadLevel1, loadLevel2, loadLevel3, loadLevel4, loadLevel5];
@@ -28,7 +28,9 @@ initEditor();
 
 
 // Add VR Button 
-document.body.appendChild(VRButton.createButton(renderer));
+const vrButton = VRButton.createButton(renderer);
+vrButton.style.transition = 'opacity 0.5s';
+document.body.appendChild(vrButton);
 
 // Auto Narrative Setup
 initNarrative((levelIdx) => {
@@ -39,6 +41,32 @@ initNarrative((levelIdx) => {
 // UI Setup
 const gameUI = document.getElementById('game-ui');
 const menuOverlay = document.getElementById('menu-overlay');
+
+// Camera Modes
+export let cameraMode = 1;
+const btnCam1 = document.getElementById('cam-mode-1');
+const btnCam2 = document.getElementById('cam-mode-2');
+const btnCam3 = document.getElementById('cam-mode-3');
+function setCameraMode(mode) {
+    cameraMode = mode;
+    if(btnCam1) btnCam1.classList.toggle('active', mode === 1);
+    if(btnCam2) btnCam2.classList.toggle('active', mode === 2);
+    if(btnCam3) btnCam3.classList.toggle('active', mode === 3);
+
+    if (camera && camera.isPerspectiveCamera) {
+        if (mode === 3) {
+            camera.fov = 130; // Fisheye first-person
+        } else if (mode === 2) {
+            camera.fov = 95; // Wide angle
+        } else {
+            camera.fov = 75; // Normal
+        }
+        camera.updateProjectionMatrix();
+    }
+}
+if (btnCam1) btnCam1.addEventListener('click', () => setCameraMode(1));
+if (btnCam2) btnCam2.addEventListener('click', () => setCameraMode(2));
+if (btnCam3) btnCam3.addEventListener('click', () => setCameraMode(3));
 
 let introStartTime = 0;
 let introStartRotY = 0;
@@ -56,10 +84,18 @@ function startLevelIntro(idx) {
     // subtitle box cinematic display
     const seq = sequences[idx - 1];
     if (seq) {
-        // Calculate duration based on 180ms per character + 3 seconds reading time
-        const textToType = seq.text + "\n\n(按空白鍵跳過演出)";
-        introDuration = (textToType.length * 0.18) + 3;
-        showDialog(textToType, introDuration * 1000);
+        const parts = seq.text.split('\n');
+        const bigTitle = parts[0];
+        const rawSub = parts.slice(1).join(' ').replace(/\n/g, ' ');
+        
+        let chunks = rawSub.split('。').map(s=>s.trim()).filter(s=>s.length>0).map(s=>s+'。');
+        chunks.push("(按空白鍵跳過演出)");
+        
+        introDuration = (rawSub.length * 0.08) + (chunks.length * 2.0) + 4; 
+        
+        showBigTitle(bigTitle, () => {
+            if (isIntroCinematic) showDialog(chunks, (introDuration - 4) * 1000);
+        });
     } else {
         introDuration = 8;
     }
@@ -71,6 +107,9 @@ document.addEventListener('keydown', (e) => {
         hideDialog();
         controls.lock();
     }
+    if (e.key === '1') setCameraMode(1);
+    if (e.key === '2') setCameraMode(2);
+    if (e.key === '3') setCameraMode(3);
 });
 
 document.addEventListener('unlockControlsForDialog', () => {
@@ -80,6 +119,8 @@ document.addEventListener('unlockControlsForDialog', () => {
 document.getElementById('start-btn').addEventListener('click', () => {
     menuOverlay.style.display = 'none';
     gameUI.style.display = 'block';
+    if(vrButton) vrButton.style.opacity = '0';
+    if(vrButton) vrButton.style.pointerEvents = 'none';
     
     const selectedLvl = parseInt(document.getElementById('level-select').value);
     if(levelLoaders[selectedLvl]) {
@@ -93,6 +134,8 @@ document.getElementById('start-btn').addEventListener('click', () => {
 document.getElementById('auto-btn').addEventListener('click', () => {
     menuOverlay.style.display = 'none';
     gameUI.style.display = 'block';
+    if(vrButton) vrButton.style.opacity = '0';
+    if(vrButton) vrButton.style.pointerEvents = 'none';
     startAutoNarrative();
 });
 
@@ -115,6 +158,8 @@ controls.addEventListener('unlock', () => {
     if (isAutoMode) stopAutoNarrative();
     gameUI.style.display = 'none';
     menuOverlay.style.display = 'flex';
+    if(vrButton) vrButton.style.opacity = '1';
+    if(vrButton) vrButton.style.pointerEvents = 'auto';
 });
 
 
@@ -132,7 +177,9 @@ renderer.setAnimationLoop(() => {
         // Auto cat animation
         const yaw = camera.rotation.y;
         const floorY = (levelState.playerBaseY || 0.5) - 0.5; 
-        const forwardOffset = new THREE.Vector3(0, 0, -1.8).applyAxisAngle(new THREE.Vector3(0,1,0), yaw);
+        let fOff = cameraMode === 2 ? -4.5 : -1.8;
+        catGroup.visible = (cameraMode !== 3);
+        const forwardOffset = new THREE.Vector3(0, 0, fOff).applyAxisAngle(new THREE.Vector3(0,1,0), yaw);
         
         const targetPos = new THREE.Vector3(camera.position.x + forwardOffset.x, floorY, camera.position.z + forwardOffset.z);
         // Smoothly lerp the cat to look like it's walking forward instead of rigidly snapping
@@ -152,7 +199,9 @@ renderer.setAnimationLoop(() => {
             playerBody.position.set(camera.position.x, levelState.playerBaseY || 0.5, camera.position.z);
             const yaw = camera.rotation.y;
             const floorY = (levelState.playerBaseY || 0.5) - 0.5;
-            const forwardOffset = new THREE.Vector3(0, 0, -1.8).applyAxisAngle(new THREE.Vector3(0,1,0), yaw);
+            let fOff = cameraMode === 2 ? -4.5 : -1.8;
+            catGroup.visible = (cameraMode !== 3);
+            const forwardOffset = new THREE.Vector3(0, 0, fOff).applyAxisAngle(new THREE.Vector3(0,1,0), yaw);
             catGroup.position.set(camera.position.x + forwardOffset.x, floorY, camera.position.z + forwardOffset.z);
             catGroup.rotation.y = yaw;
         } else {
@@ -187,10 +236,35 @@ renderer.setAnimationLoop(() => {
             if(!constraint) {
                 const yaw = camera.rotation.y;
                 const floorY = (isNoclip) ? camera.position.y - 0.5 : (levelState.playerBaseY || 0.5) - 0.5; 
-                const forwardOffset = new THREE.Vector3(0, 0, -1.8).applyAxisAngle(new THREE.Vector3(0,1,0), yaw);
                 
-                catGroup.position.set(camera.position.x + forwardOffset.x, floorY + baseBob, camera.position.z + forwardOffset.z);
-                catGroup.rotation.y = yaw;
+                if (!isNoclip) {
+                    let yOffset = 2.5; // Normal OTS height
+                    if (cameraMode === 2) yOffset = 4.5; // Wide angle height
+                    if (cameraMode === 3) yOffset = 0.5; // Fox eye level
+                    
+                    const targetCamY = (levelState.playerBaseY || 0.5) + yOffset;
+                    camera.position.y += (targetCamY - camera.position.y) * 4 * dt;
+                }
+
+                let fOff = cameraMode === 2 ? -4.5 : (cameraMode === 1 ? -2.2 : 0);
+                let xOff = cameraMode === 1 ? -1.2 : 0; // Negative X = avatar to left, camera over right shoulder
+                
+                catGroup.visible = (cameraMode !== 3);
+                
+                const localOffset = new THREE.Vector3(xOff, 0, fOff);
+                localOffset.applyAxisAngle(new THREE.Vector3(0,1,0), yaw);
+                
+                const targetPos = new THREE.Vector3(
+                    camera.position.x + localOffset.x,
+                    floorY + baseBob,
+                    camera.position.z + localOffset.z
+                );
+                
+                // FREE HAND (Elastic trailing) - smooth lerp instead of rigid set
+                catGroup.position.lerp(targetPos, 8 * dt);
+                
+                const targetRot = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0), yaw);
+                catGroup.quaternion.slerp(targetRot, 8 * dt);
                 
                 if (keys.w||keys.s||keys.a||keys.d) {
                      catTail.rotation.z = Math.sin(clock.elapsedTime * 15) * 0.2;

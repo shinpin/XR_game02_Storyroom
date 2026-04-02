@@ -18,6 +18,8 @@ export function loadLevel1() {
         texture.colorSpace = THREE.SRGBColorSpace;
         scene.background = texture;
         scene.environment = texture;
+        scene.backgroundRotation.y = THREE.MathUtils.degToRad(80);
+        scene.environmentRotation.y = THREE.MathUtils.degToRad(80);
     });
     scene.fog.color.setHex(0xaaaaaa); 
     scene.fog.density = 0.012;
@@ -28,42 +30,42 @@ export function loadLevel1() {
     
     const water = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), matWater);
     water.rotation.x = -Math.PI / 2;
-    water.position.y = -3.5;
+    water.position.y = -5.5;
     levelGroup.add(water);
 
     const invisibleFloor = new THREE.Mesh(new THREE.BoxGeometry(200, 1, 200), matLight);
     invisibleFloor.visible = false;
-    invisibleFloor.position.y = -4.0;
+    invisibleFloor.position.y = -6.0;
     createPhysicsObject(invisibleFloor, new CANNON.Box(new CANNON.Vec3(100, 0.5, 100)), 0);
 
     const lanternMat = new THREE.MeshStandardMaterial({ color: 0xffcc00, emissive: 0xffaa00, emissiveIntensity: 1.5 });
     const woodMat = new THREE.MeshStandardMaterial({ color: 0x5c4033, roughness: 1.0 });
     const weedMat = new THREE.MeshStandardMaterial({ color: 0x2e8b57, roughness: 0.9 });
 
-    for(let i=0; i<30; i++) {
-        const lRadius = 0.3 + Math.random()*0.4;
-        const lanternGeo = new THREE.CylinderGeometry(lRadius, lRadius, 0.15, 16);
-        const lantern = new THREE.Mesh(lanternGeo, lanternMat);
-        lantern.position.set((Math.random()-0.5)*40, -3.4, (Math.random()-0.5)*40);
-        createPhysicsObject(lantern, new CANNON.Cylinder(lRadius, lRadius, 0.15, 16), 1, true);
+    for(let i=0; i<360; i++) {
+        if (i < 60) {
+            const lRadius = 0.3 + Math.random()*0.4;
+            const lanternGeo = new THREE.CylinderGeometry(lRadius, lRadius, 0.15, 16);
+            const lantern = new THREE.Mesh(lanternGeo, lanternMat);
+            lantern.position.set((Math.random()-0.5)*40, -5.4, (Math.random()-0.5)*40);
+            createPhysicsObject(lantern, new CANNON.Cylinder(lRadius, lRadius, 0.15, 16), 1, true);
+        }
 
-        if(i < 15) {
+        if(i < 30) {
             const wLen = 2 + Math.random()*3;
             const wRad = 0.2 + Math.random()*0.2;
             const wood = new THREE.Mesh(new THREE.CylinderGeometry(wRad, wRad, wLen, 8), woodMat);
             const q = new CANNON.Quaternion();
             q.setFromAxisAngle(new CANNON.Vec3(1,0,0), Math.PI/2);
-            wood.position.set((Math.random()-0.5)*50, -3.4, (Math.random()-0.5)*50);
+            wood.position.set((Math.random()-0.5)*50, -5.4, (Math.random()-0.5)*50);
             const woodBody = createPhysicsObject(wood, new CANNON.Cylinder(wRad, wRad, wLen, 8), 5, true);
             woodBody.quaternion.copy(q);
         }
 
-        if(i < 20) {
-            const weedRad = 1 + Math.random();
-            const weed = new THREE.Mesh(new THREE.CylinderGeometry(weedRad, weedRad, 0.05, 12), weedMat);
-            weed.position.set((Math.random()-0.5)*60, -3.45, (Math.random()-0.5)*60);
-            createPhysicsObject(weed, new CANNON.Cylinder(weedRad, weedRad, 0.05, 12), 2, true);
-        }
+        const weedRad = 1 + Math.random();
+        const weed = new THREE.Mesh(new THREE.CylinderGeometry(weedRad, weedRad, 0.05, 12), weedMat);
+        weed.position.set((Math.random()-0.5)*120, -5.45, (Math.random()-0.5)*120);
+        createPhysicsObject(weed, new CANNON.Cylinder(weedRad, weedRad, 0.05, 12), 2, true);
     }
 
     // Memory Crystals (Interactive puzzle elements)

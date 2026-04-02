@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { camera } from './core.js';
 import { setCatColor } from './player.js';
+import { showBigTitle } from './state.js';
 
 export let isAutoMode = false;
 let currentSequenceIndex = 0;
@@ -14,7 +15,7 @@ const cinematicOverlay = document.getElementById('cinematic-overlay');
 export const sequences = [
     {
         level: 1, duration: 25,
-        text: '第一關：水燈大樹\n冷冽的水霧撲面而來。身為一隻迷失的小貓，你跌入了由古老神話與記憶交織的異次元邊界。跟隨著水面上發出幽光的水母與漂浮的光點，你來到了一棵不合常理、如天柱般高聳的古樹前。\n「這裡是起點，也是終點...」一個微弱的聲音在耳邊迴盪。尋找四散的記憶碎片吧，或許它們能拼湊出回家的道路。',
+        text: '第一關：水燈大樹\n冷冽的水霧撲面而來。身為一隻迷失的小狐狸，你跌入了由古老神話與記憶交織的異次元邊界。跟隨著水面上發出幽光的水母與漂浮的光點，你來到了一棵不合常理、如天柱般高聳的古樹前。\n「這裡是起點，也是終點...」一個微弱的聲音在耳邊迴盪。尋找四散的記憶碎片吧，或許它們能拼湊出回家的道路。',
         startPos: new THREE.Vector3(0, 1.8, 20), endPos: new THREE.Vector3(0, 3, 5),
         startRot: new THREE.Euler(0, 0, 0), endRot: new THREE.Euler(0.2, 0, 0)
     },
@@ -64,7 +65,7 @@ export function stopAutoNarrative() {
         clearInterval(subtitleTypeWriterInterval);
         subtitleTypeWriterInterval = null;
     }
-    setCatColor(0x4a2a18); // Default brown
+    setCatColor(0xcc5500); // Default fox orange
 }
 
 function playSequence(index) {
@@ -91,15 +92,46 @@ function playSequence(index) {
     subtitleEl.innerText = '';
     subtitleEl.style.opacity = '1';
     
-    let charIndex = 0;
-    subtitleTypeWriterInterval = setInterval(() => {
-        subtitleEl.innerText += seq.text.charAt(charIndex);
-        charIndex++;
-        if (charIndex >= seq.text.length) {
-            clearInterval(subtitleTypeWriterInterval);
-            subtitleTypeWriterInterval = null;
-        }
-    }, 180);
+    const parts = seq.text.split('\n');
+    const bigTitle = parts[0];
+    const subtitleText = parts.slice(1).join(' ').replace(/\n/g, ' ');
+    
+    showBigTitle(bigTitle, () => {
+        if(!isAutoMode) return;
+        
+        let chunks = subtitleText.split('。').map(s=>s.trim()).filter(s=>s.length>0).map(s=>s+'。');
+        let chunkIdx = 0;
+        
+        const playNext = () => {
+            if (chunkIdx >= chunks.length || !isAutoMode) return;
+            subtitleEl.style.transition = 'none';
+            subtitleEl.style.opacity = '1';
+            subtitleEl.innerText = '';
+            
+            const txt = chunks[chunkIdx];
+            let charIndex = 0;
+            
+            subtitleTypeWriterInterval = setInterval(() => {
+                subtitleEl.innerText += txt.charAt(charIndex);
+                charIndex++;
+                if (charIndex >= txt.length) {
+                    clearInterval(subtitleTypeWriterInterval);
+                    subtitleTypeWriterInterval = null;
+                    if (chunkIdx < chunks.length - 1) {
+                        setTimeout(() => {
+                            subtitleEl.style.transition = 'opacity 0.5s';
+                            subtitleEl.style.opacity = '0';
+                            setTimeout(() => {
+                                chunkIdx++;
+                                playNext();
+                            }, 500);
+                        }, 1500);
+                    }
+                }
+            }, 80);
+        };
+        playNext();
+    });
 }
 
 export function updateNarrative(dt) {

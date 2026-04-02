@@ -34,7 +34,35 @@ document.addEventListener('keyup', (e) => {
 });
 
 export let isIntroCinematic = false;
-export function setIntroCinematic(v) { isIntroCinematic = v; }
+export function setIntroCinematic(v) { 
+    isIntroCinematic = v; 
+    if(!v) {
+        const titleEl = document.getElementById('big-level-title');
+        if(titleEl) {
+            titleEl.style.opacity = '0';
+            titleEl.classList.add('hidden-element');
+        }
+    }
+}
+
+export function showBigTitle(text, callback) {
+    const titleEl = document.getElementById('big-level-title');
+    if (!titleEl) return;
+    titleEl.innerText = text;
+    titleEl.classList.remove('hidden-element');
+    
+    // Fade In
+    setTimeout(() => { titleEl.style.opacity = '1'; }, 50);
+    
+    // Hold then Fade Out 
+    setTimeout(() => {
+        titleEl.style.opacity = '0';
+        setTimeout(() => {
+            titleEl.classList.add('hidden-element');
+            if(callback) callback();
+        }, 1000); // Wait 1s for fade out
+    }, 3000); // 3s hold = 4s total
+}
 
 let typeWriterInterval = null;
 
@@ -65,43 +93,67 @@ export function showDialog(text, durationOrOptions = 4000) {
     
     // Clear previous timeouts & intervals
     optionsCont.innerHTML = '';
+    textEl.style.opacity = '1';
     textEl.innerText = '';
     if (window._dialogTimeout) clearTimeout(window._dialogTimeout);
     if (typeWriterInterval) clearInterval(typeWriterInterval);
     
-    let charIndex = 0;
+    let chunks = Array.isArray(text) ? text : [text];
+    let chunkIndex = 0;
     
-    const showOptionsAndTimer = () => {
-        if (Array.isArray(durationOrOptions)) {
-            // Show options after typing finishes
-            durationOrOptions.forEach(opt => {
-                const btn = document.createElement('button');
-                btn.className = 'dialog-option-btn';
-                btn.innerText = opt.text;
-                btn.onclick = () => {
-                    if(opt.action) opt.action();
-                    hideDialog();
-                };
-                optionsCont.appendChild(btn);
-            });
-            // Auto-unlock controls
-            document.dispatchEvent(new CustomEvent('unlockControlsForDialog'));
-        } else {
-            // Start hide timer after typing finishes
-            window._dialogTimeout = setTimeout(() => {
-                hideDialog();
-            }, durationOrOptions);
+    const playNextChunk = () => {
+        if (chunkIndex >= chunks.length) {
+            if (Array.isArray(durationOrOptions)) {
+                // Show options after typing finishes
+                durationOrOptions.forEach(opt => {
+                    const btn = document.createElement('button');
+                    btn.className = 'dialog-option-btn';
+                    btn.innerText = opt.text;
+                    btn.onclick = () => {
+                        if(opt.action) opt.action();
+                        hideDialog();
+                    };
+                    optionsCont.appendChild(btn);
+                });
+                // Auto-unlock controls
+                document.dispatchEvent(new CustomEvent('unlockControlsForDialog'));
+            } else {
+                // End hide timer
+                window._dialogTimeout = setTimeout(() => hideDialog(), 2000); 
+            }
+            return;
         }
+
+        textEl.style.transition = 'none';
+        textEl.style.opacity = '1';
+        textEl.innerText = '';
+        const currentChunk = chunks[chunkIndex];
+        let charIndex = 0;
+
+        typeWriterInterval = setInterval(() => {
+            textEl.innerText += currentChunk.charAt(charIndex);
+            charIndex++;
+            if (charIndex >= currentChunk.length) {
+                clearInterval(typeWriterInterval);
+                typeWriterInterval = null;
+                
+                if (chunkIndex < chunks.length - 1) {
+                    window._dialogTimeout = setTimeout(() => {
+                        textEl.style.transition = 'opacity 0.5s';
+                        textEl.style.opacity = '0';
+                        window._dialogTimeout = setTimeout(() => {
+                            chunkIndex++;
+                            playNextChunk();
+                        }, 500); 
+                    }, 1500); 
+                } else {
+                    chunkIndex++;
+                    playNextChunk(); 
+                }
+            }
+        }, 80); 
     };
 
-    typeWriterInterval = setInterval(() => {
-        textEl.innerText += text.charAt(charIndex);
-        charIndex++;
-        if (charIndex >= text.length) {
-            clearInterval(typeWriterInterval);
-            typeWriterInterval = null;
-            showOptionsAndTimer();
-        }
-    }, 180); // 180ms per character
+    playNextChunk();
 }
 
