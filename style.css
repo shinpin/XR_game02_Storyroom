@@ -311,16 +311,91 @@ body, html {
   position: absolute;
   top: 80px;
   left: 18px;
-  background: rgba(4, 8, 20, 0.6);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: rgba(4, 8, 20, 0.72);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
   border: 1px solid rgba(150, 200, 255, 0.1);
-  border-radius: 16px;
-  padding: 14px 12px;
+  border-radius: 14px;
+  padding: 8px;
   z-index: 5;
   pointer-events: none;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.04);
-  min-width: 82px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.04);
+}
+
+#nav-svg {
+  width: 160px;
+  height: 172px;
+  display: block;
+  overflow: visible;
+}
+
+/* Zone shapes - default: dark/unexplored */
+.map-zone .zone-shape {
+  fill: rgba(40, 50, 70, 0.55);
+  stroke: rgba(100, 130, 180, 0.22);
+  stroke-width: 1;
+  stroke-linejoin: round;
+  transition: fill 0.5s ease, stroke 0.5s ease, filter 0.5s ease;
+  filter: none;
+}
+
+/* Zone name labels */
+.zone-label {
+  font-family: 'Inter', sans-serif;
+  font-size: 7.5px;
+  fill: rgba(140, 165, 210, 0.4);
+  text-anchor: middle;
+  dominant-baseline: middle;
+  pointer-events: none;
+  transition: fill 0.5s, font-weight 0.3s;
+  letter-spacing: 0.3px;
+}
+
+/* Location pin */
+.location-pin {
+  font-size: 9px;
+  fill: #ffdd44;
+  text-anchor: middle;
+  dominant-baseline: middle;
+  filter: drop-shadow(0 0 5px rgba(255,210,40,0.9));
+  animation: pin-bob 1.5s ease-in-out infinite;
+}
+
+@keyframes pin-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+
+/* Map footer label */
+.map-footer {
+  font-family: 'Inter', sans-serif;
+  font-size: 6.5px;
+  fill: rgba(120, 155, 210, 0.38);
+  text-anchor: middle;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+/* PASSED zones */
+.map-zone.passed .zone-shape {
+  fill: rgba(35, 70, 130, 0.58);
+  stroke: rgba(80, 150, 255, 0.55);
+  filter: drop-shadow(0 0 3px rgba(60, 130, 255, 0.3));
+}
+.map-zone.passed .zone-label {
+  fill: rgba(140, 195, 255, 0.82);
+}
+
+/* ACTIVE (current) zone */
+.map-zone.active .zone-shape {
+  fill: rgba(195, 155, 18, 0.68);
+  stroke: rgba(255, 205, 50, 0.92);
+  stroke-width: 1.5;
+  filter: drop-shadow(0 0 7px rgba(255, 195, 40, 0.75));
+}
+.map-zone.active .zone-label {
+  fill: #ffe87a;
+  font-size: 8px;
 }
 
 .nav-title {

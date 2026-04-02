@@ -84,17 +84,31 @@ export function createLevelDoor(x, y, z, nextLevelId) {
 
 export function updateNavMap(idx) {
     if(!document.getElementById('nav-val-1')) return;
-    for(let i=1; i<=5; i++) {
+    
+    // Pin positions (SVG centroid of each zone)
+    const pinPositions = {
+        1: { x: 42, y: 174 },
+        2: { x: 40, y: 131 },
+        3: { x: 98, y: 122 },
+        4: { x: 150, y: 112 },
+        5: { x: 128, y: 50 }
+    };
+    
+    for(let i = 1; i <= 5; i++) {
         const node = document.getElementById(`nav-val-${i}`);
-        const link = document.getElementById(`nav-link-${i}`);
         if(node) {
-            node.className = 'nav-point';
-            if(i < idx) node.classList.add('passed');
-            else if(i === idx) node.classList.add('active');
+            // SVG-safe: use setAttribute instead of className
+            let cls = 'map-zone';
+            if(i < idx) cls += ' passed';
+            else if(i === idx) cls += ' active';
+            node.setAttribute('class', cls);
         }
-        if(link && i < 5) {
-            link.className = 'nav-link';
-            if(i < idx) link.classList.add('passed');
-        }
+    }
+    
+    // Move the location pin to current zone
+    const pin = document.getElementById('nav-pin');
+    if(pin && pinPositions[idx]) {
+        pin.setAttribute('x', pinPositions[idx].x);
+        pin.setAttribute('y', pinPositions[idx].y);
     }
 }
