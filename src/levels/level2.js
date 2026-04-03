@@ -148,10 +148,35 @@ export function loadLevel2() {
     fireflies.position.y = 2;
     levelGroup.add(fireflies);
     
+    let puzzleSolved = false;
+    const initialRotation = new THREE.Vector3().setFromEuler(dialMesh.rotation).length();
+
+    // Create a flash light for puzzle completion
+    const flashLight = new THREE.PointLight(0xffffff, 0, 50);
+    flashLight.position.set(altarX, floorY + 4, altarZ);
+    levelGroup.add(flashLight);
+
     levelState.updatables.push((dt) => {
+        if (!puzzleSolved) {
+            const currentRotation = new THREE.Vector3().setFromEuler(dialMesh.rotation).length();
+            const diff = Math.abs(currentRotation - initialRotation);
+            // If rotated more than ~45 degrees (0.8 radians)
+            if (diff > 0.8) {
+                puzzleSolved = true;
+                // Visual Flash
+                flashLight.intensity = 5;
+                dialMesh.material.color.setHex(0xaaffaa);
+                setTimeout(() => { flashLight.intensity = 0; }, 500);
+                
+                // Spawn the Door
+                createLevelDoor(altarX, floorY + 1.5, altarZ - 8, 3); 
+                import('../state.js').then(({ showDialog }) => {
+                    showDialog('古老的機關發出轟鳴聲... 一扇光門在祭壇後方展開。');
+                });
+            }
+        }
+        
         fireflies.rotation.y += dt * 0.04;
     });
-
-    createLevelDoor(altarX, floorY + 1.5, altarZ - 8, 3); 
 }
 

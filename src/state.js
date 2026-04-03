@@ -1,4 +1,6 @@
 import * as THREE from 'three';
+import { sequences } from './narrative.js';
+import { playTypewriterTick } from './audio.js';
 
 export let levelGroup = new THREE.Group();
 export let levelState = {
@@ -131,7 +133,11 @@ export function showDialog(text, durationOrOptions = 4000) {
         let charIndex = 0;
 
         typeWriterInterval = setInterval(() => {
-            textEl.innerText += currentChunk.charAt(charIndex);
+            const char = currentChunk.charAt(charIndex);
+            if (char !== ' ' && char !== '\n' && char !== '。') {
+                playTypewriterTick();
+            }
+            textEl.innerText += char;
             charIndex++;
             if (charIndex >= currentChunk.length) {
                 clearInterval(typeWriterInterval);

@@ -8,155 +8,115 @@ import { world, physicsMaterial } from '../physics.js';
 export function loadLevel3() {
     clearLevel();
     updateNavMap(3);
-    scene.fog.color.setHex(0x020205); scene.background.setHex(0x020205);
     
-    const tileSize = 2; 
-    const boardSizeX = 8;
-    const boardSizeZ = 12; 
-    const roomWidthLength = (boardSizeX * tileSize) / 2;
-    const roomDepthLength = (boardSizeZ * tileSize) / 2;
-    
-    const boardGroup = new THREE.Group();
-    const groundShape = new CANNON.Box(new CANNON.Vec3(roomWidthLength, 0.5, roomDepthLength));
-    const groundBody = new CANNON.Body({ mass: 0, material: physicsMaterial });
-    groundBody.addShape(groundShape);
-    groundBody.position.set(0, -0.5, 0); 
-    world.addBody(groundBody);
-    levelState.rigidBodies.push({ mesh: new THREE.Mesh(), body: groundBody });
+    levelState.playerBaseY = 0.5;
+    scene.fog.color.setHex(0x0a0505); 
+    scene.fog.density = 0.02; 
+    scene.background = new THREE.Color(0x0a0505);
+    scene.environment = scene.background;
+    const matStone = new THREE.MeshStandardMaterial({ color: 0x111116, roughness: 0.9, metalness: 0.1 });
+    const matGround = new THREE.MeshStandardMaterial({ color: 0x050508, roughness: 1.0 });
 
-    const darkMat = new THREE.MeshStandardMaterial({ color: 0x050511, roughness: 0.05, metalness: 0.8 });
-    const lightMat = new THREE.MeshStandardMaterial({ color: 0x8899aa, roughness: 0.05, metalness: 0.8 });
-    const tileGeo = new THREE.BoxGeometry(tileSize, 0.2, tileSize);
+    const roomW = 30; // -15 to +15
+    const roomZ = 40; // -20 to +20
 
-    for (let i = 0; i < boardSizeX; i++) {
-        for (let j = 0; j < boardSizeZ; j++) {
-            const isDark = (i + j) % 2 === 0;
-            const tile = new THREE.Mesh(tileGeo, isDark ? darkMat : lightMat);
-            const xPos = (i - boardSizeX / 2 + 0.5) * tileSize;
-            const zPos = (j - boardSizeZ / 2 + 0.5) * tileSize;
-            tile.position.set(xPos, -0.1, zPos);
-            tile.receiveShadow = true;
-            boardGroup.add(tile);
+    // Ground Floor
+    const ground = new THREE.Mesh(new THREE.BoxGeometry(roomW, 1, roomZ), matGround);
+    ground.position.set(0, -0.5, 0);
+    createPhysicsObject(ground, new CANNON.Box(new CANNON.Vec3(roomW/2, 0.5, roomZ/2)), 0);
+
+    // Wall Pillars (Temple feel)
+    for(let z=-18; z<=18; z+=6) {
+        for(let x of [-14, 14]) {
+            const pillar = new THREE.Mesh(new THREE.BoxGeometry(2, 16, 2), matStone);
+            pillar.position.set(x, 8, z);
+            createPhysicsObject(pillar, new CANNON.Box(new CANNON.Vec3(1, 8, 1)), 0);
+            
+            // Wall torches
+            const light = new THREE.PointLight(0xff6622, 1, 15);
+            light.position.set(x > 0 ? x-1.5 : x+1.5, 4, z);
+            levelGroup.add(light);
         }
     }
-    levelGroup.add(boardGroup);
 
-    const archMat = new THREE.MeshStandardMaterial({ color: 0x111115, roughness: 0.8, metalness: 0.2 });
-    const emissiveMat = new THREE.MeshStandardMaterial({ color: 0x4488ff, emissive: 0x2266ff, emissiveIntensity: 2 });
-    
-    const addStaticPhysicsBox = (w, h, d, x, y, z) => {
-        const body = new CANNON.Body({ mass: 0, material: physicsMaterial });
-        body.addShape(new CANNON.Box(new CANNON.Vec3(w/2, h/2, d/2)));
-        body.position.set(x, y, z);
-        world.addBody(body);
-        levelState.rigidBodies.push({ mesh: new THREE.Mesh(), body: body });
-    };
+    const gridBaseZ = -5;
+    const tileS = 2; 
 
-    function buildSideWall(xOffset) {
-        const numBlocksZ = 6;
-        const blockDepth = (boardSizeZ * tileSize) / numBlocksZ;
-        for(let i=0; i<numBlocksZ; i++) {
-            const zPos = -roomDepthLength + (i * blockDepth) + (blockDepth/2);
-            const wMesh = new THREE.Mesh(new THREE.BoxGeometry(2, 10, blockDepth - 0.2), archMat);
-            wMesh.position.set(xOffset, 5, zPos);
-            wMesh.receiveShadow = true;
-            levelGroup.add(wMesh);
-            if (i < numBlocksZ - 1) {
-                const seam = new THREE.Mesh(new THREE.BoxGeometry(1.9, 10, 0.2), emissiveMat);
-                seam.position.set(xOffset, 5, zPos + (blockDepth/2));
-                levelGroup.add(seam);
-                const seamLight = new THREE.PointLight(0x4488ff, 1, 8);
-                seamLight.position.copy(seam.position);
-                levelGroup.add(seamLight);
-            }
+    // Target Glowing Plates
+    const targetPlate1 = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.2, 1.8), new THREE.MeshStandardMaterial({ color: 0xffaa00, emissive: 0xaa4400, emissiveIntensity: 2 }));
+    targetPlate1.position.set(-tileS, 0.1, gridBaseZ - tileS*2);
+    levelGroup.add(targetPlate1);
+
+    const targetPlate2 = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.2, 1.8), new THREE.MeshStandardMaterial({ color: 0x00aaff, emissive: 0x0044aa, emissiveIntensity: 2 }));
+    targetPlate2.position.set(tileS, 0.1, gridBaseZ - tileS*2);
+    levelGroup.add(targetPlate2);
+
+    // Chessboard floor
+    const darkTileMat = new THREE.MeshStandardMaterial({ color: 0x020202, roughness: 0.2 });
+    const lightTileMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.2 });
+    for(let i=-2; i<=2; i++) {
+        for(let j=-3; j<=3; j++) {
+            const isD = (i+j)%2 === 0;
+            const tile = new THREE.Mesh(new THREE.PlaneGeometry(tileS, tileS), isD ? darkTileMat : lightTileMat);
+            tile.rotation.x = -Math.PI/2;
+            tile.position.set(i*tileS, 0.01, gridBaseZ + j*tileS);
+            levelGroup.add(tile);
         }
-        addStaticPhysicsBox(2, 10, boardSizeZ * tileSize, xOffset, 5, 0);
     }
-    buildSideWall(-roomWidthLength - 1);
-    buildSideWall(roomWidthLength + 1);
 
-    const doorWidth = 4;
-    const doorHeight = 6;
-    const fwLeftGeo = new THREE.BoxGeometry((roomWidthLength * 2 - doorWidth)/2, 10, 2);
-    const fwLeft = new THREE.Mesh(fwLeftGeo, archMat);
-    fwLeft.position.set(-roomWidthLength + ((roomWidthLength * 2 - doorWidth)/4), 5, -roomDepthLength - 1);
-    levelGroup.add(fwLeft);
-    addStaticPhysicsBox((roomWidthLength * 2 - doorWidth)/2, 10, 2, fwLeft.position.x, fwLeft.position.y, fwLeft.position.z);
+    // Interactive Obelisks (Chess pieces)
+    const obeGeo = new THREE.CylinderGeometry(0.4, 0.9, 4, 4);
+    obeGeo.rotateY(Math.PI/4); // Square pyramid alignment
 
-    const fwRight = new THREE.Mesh(fwLeftGeo, archMat);
-    fwRight.position.set(roomWidthLength - ((roomWidthLength * 2 - doorWidth)/4), 5, -roomDepthLength - 1);
-    levelGroup.add(fwRight);
-    addStaticPhysicsBox((roomWidthLength * 2 - doorWidth)/2, 10, 2, fwRight.position.x, fwRight.position.y, fwRight.position.z);
+    const obe1 = new THREE.Mesh(obeGeo, matStone.clone());
+    obe1.position.set(-tileS*2, 2, gridBaseZ + tileS*2);
+    const body1 = createPhysicsObject(obe1, new CANNON.Box(new CANNON.Vec3(0.65, 2, 0.65)), 80, true);
 
-    const fwTop = new THREE.Mesh(new THREE.BoxGeometry(doorWidth, 10 - doorHeight, 2), archMat);
-    fwTop.position.set(0, doorHeight + (10 - doorHeight)/2, -roomDepthLength - 1);
-    levelGroup.add(fwTop);
-    addStaticPhysicsBox(doorWidth, 10 - doorHeight, 2, fwTop.position.x, fwTop.position.y, fwTop.position.z);
+    const obe2 = new THREE.Mesh(obeGeo, matStone.clone());
+    obe2.position.set(tileS*2, 2, gridBaseZ + tileS*2);
+    const body2 = createPhysicsObject(obe2, new CANNON.Box(new CANNON.Vec3(0.65, 2, 0.65)), 80, true);
 
-    const ceilGeo = new THREE.BoxGeometry(roomWidthLength*2 + 4, 1, roomDepthLength*2 + 4);
-    const ceiling = new THREE.Mesh(ceilGeo, archMat);
-    ceiling.position.set(0, 10, 0); 
-    levelGroup.add(ceiling);
-    
-    const grillMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.9, metalness: 0.5 });
-    const cross1 = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 6), grillMat);
-    cross1.position.set(0, 9.5, 0);
-    levelGroup.add(cross1);
-    const cross2 = new THREE.Mesh(new THREE.BoxGeometry(6, 0.5, 0.5), grillMat);
-    cross2.position.set(0, 9.5, 0);
-    levelGroup.add(cross2);
-    
-    const skyLight = new THREE.DirectionalLight(0xddeeff, 5); 
-    skyLight.position.set(0, 20, 0);
+    // Ensure they are interactable via Telekinesis
+    obe1.userData.physicsBody = body1;
+    obe1.userData.isInteractable = true;
+    obe2.userData.physicsBody = body2;
+    obe2.userData.isInteractable = true;
+    levelState.interactables.push(obe1, obe2);
+
+    // Central Light
+    const skyLight = new THREE.PointLight(0xddccff, 2, 40); 
+    skyLight.position.set(0, 15, gridBaseZ);
     levelGroup.add(skyLight);
 
-    const pieceGeoObj = new THREE.BoxGeometry(1.2, 2.5, 1.2); 
-    const pieceMatObj = new THREE.MeshStandardMaterial({ color: 0x333338, roughness: 0.7, metalness: 0.3 });
-    const rows = 4;
-    for(let i=0; i<rows; i++) {
-        const depth = -roomDepthLength + 3 + (i * 2.5);
-        const ml = new THREE.Mesh(pieceGeoObj, pieceMatObj);
-        ml.position.set(-roomWidthLength + 1.5, 2, depth);
-        ml.castShadow = true; ml.receiveShadow = true;
-        createPhysicsObject(ml, new CANNON.Box(new CANNON.Vec3(0.6, 1.25, 0.6)), 30, true);
-        const mr = new THREE.Mesh(pieceGeoObj, pieceMatObj);
-        mr.position.set(roomWidthLength - 1.5, 2, depth);
-        mr.castShadow = true; mr.receiveShadow = true;
-        createPhysicsObject(mr, new CANNON.Box(new CANNON.Vec3(0.6, 1.25, 0.6)), 30, true);
-    }
-
-    // Pressure Plate Puzzle
-    const plateGeo = new THREE.BoxGeometry(3, 0.2, 3);
-    const plateMat = new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0x550000, emissiveIntensity: 1 });
-    const plate = new THREE.Mesh(plateGeo, plateMat);
-    const targetZ = -roomDepthLength + 5;
-    plate.position.set(0, -0.4, targetZ);
-    levelGroup.add(plate);
-
-    let doorUnlocked = false;
+    // Puzzle Logic
+    let puzzleSolved = false;
 
     levelState.updatables.push((dt) => {
-        if(doorUnlocked) return;
-        let pressed = false;
-        for (const obj of levelState.rigidBodies) {
-            if (obj.body.mass > 0) {
-                const dist = Math.sqrt(
-                    Math.pow(obj.body.position.x - plate.position.x, 2) + 
-                    Math.pow(obj.body.position.z - plate.position.z, 2)
-                );
-                if (dist < 2.0 && obj.body.position.y < 2.0) {
-                    pressed = true;
-                    break;
-                }
-            }
-        }
+        if (puzzleSolved) return;
         
-        if (pressed) {
-            plateMat.color.setHex(0x00ff00);
-            plateMat.emissive.setHex(0x008800);
-            doorUnlocked = true;
-            createLevelDoor(0, 0.5, -roomDepthLength + 0.1, 4);
-            showDialog('祭壇感應到實體... 古老的遺忘之門開啟了。');
+        let p1OK = false;
+        let p2OK = false;
+
+        const checkPlate = (obeBody, plateMesh) => {
+            const dx = obeBody.position.x - plateMesh.position.x;
+            const dz = obeBody.position.z - plateMesh.position.z;
+            return (Math.sqrt(dx*dx + dz*dz) < 1.0 && obeBody.position.y < 3);
+        }
+
+        if (checkPlate(body1, targetPlate1) || checkPlate(body2, targetPlate1)) p1OK = true;
+        if (checkPlate(body1, targetPlate2) || checkPlate(body2, targetPlate2)) p2OK = true;
+
+        if (p1OK && p2OK) {
+            puzzleSolved = true;
+            targetPlate1.material.emissive.setHex(0x00ff00);
+            targetPlate2.material.emissive.setHex(0x00ff00);
+            createLevelDoor(0, 0.5, -16, 4);
+            import('../audio.js').then(({ playLevelBGM }) => {
+                // optional: play unlocking sound
+            });
+            import('../state.js').then(({ showDialog }) => {
+                showDialog('命運的雙子星已歸位，前方的路徑清晰了。');
+            });
         }
     });
 

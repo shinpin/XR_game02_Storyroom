@@ -27,3 +27,27 @@ export function stopLevelBGM() {
     currentBGMUrl = null;
     if (globalBGM.isPlaying) globalBGM.stop();
 }
+
+let synthCtx;
+
+export function playTypewriterTick() {
+    if (!synthCtx) {
+        synthCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (synthCtx.state === 'suspended') synthCtx.resume();
+    
+    const osc = synthCtx.createOscillator();
+    const gainNode = synthCtx.createGain();
+    
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(800 + Math.random() * 150, synthCtx.currentTime); 
+    
+    gainNode.gain.setValueAtTime(0.05, synthCtx.currentTime); // Soft volume
+    gainNode.gain.exponentialRampToValueAtTime(0.001, synthCtx.currentTime + 0.03);
+
+    osc.connect(gainNode);
+    gainNode.connect(synthCtx.destination);
+    
+    osc.start();
+    osc.stop(synthCtx.currentTime + 0.04);
+}

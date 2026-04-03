@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { camera } from './core.js';
+import { playTypewriterTick } from './audio.js';
 import { setCatColor } from './player.js';
 import { showBigTitle } from './state.js';
 
@@ -112,7 +113,11 @@ function playSequence(index) {
             let charIndex = 0;
             
             subtitleTypeWriterInterval = setInterval(() => {
-                subtitleEl.innerText += txt.charAt(charIndex);
+                const char = txt.charAt(charIndex);
+                if (char !== ' ' && char !== '\n' && char !== '。') {
+                    playTypewriterTick();
+                }
+                subtitleEl.innerText += char;
                 charIndex++;
                 if (charIndex >= txt.length) {
                     clearInterval(subtitleTypeWriterInterval);
