@@ -4,10 +4,12 @@ import { scene } from '../core.js';
 import { clearLevel, updateNavMap, createPhysicsObject, createLevelDoor } from '../levelManager.js';
 import { levelState, levelGroup, showDialog } from '../state.js';
 import { world, physicsMaterial } from '../physics.js';
+import { playLevelBGM } from '../audio.js';
 
 export function loadLevel3() {
     clearLevel();
     updateNavMap(3);
+    playLevelBGM('/BGM_03.mp3');
     
     levelState.playerBaseY = 0.5;
     scene.fog.color.setHex(0x0a0505); 

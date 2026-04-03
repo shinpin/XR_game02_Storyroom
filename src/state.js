@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import { sequences } from './narrative.js';
 import { playTypewriterTick } from './audio.js';
 
 export let levelGroup = new THREE.Group();
