@@ -6,6 +6,15 @@ export const globalBGM = new THREE.Audio(audioListener);
 const audioLoader = new THREE.AudioLoader();
 let currentBGMUrl = null;
 
+export let isMuted = false;
+
+export function toggleMute() {
+    isMuted = !isMuted;
+    audioListener.setMasterVolume(isMuted ? 0 : 1);
+    const btn = document.getElementById('btn-toggle-audio');
+    if(btn) btn.innerText = isMuted ? '🔈' : '🔊';
+}
+
 export function initAudio() {
     camera.add(audioListener);
 }
@@ -31,6 +40,7 @@ export function stopLevelBGM() {
 let synthCtx;
 
 export function playTypewriterTick() {
+    if (isMuted) return;
     if (!synthCtx) {
         synthCtx = new (window.AudioContext || window.webkitAudioContext)();
     }

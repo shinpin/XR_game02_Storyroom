@@ -9,6 +9,9 @@ let currentEndRot = null;
 
 export let isNoclip = false;
 
+let timelineActive = false;
+let eventMarkersCreated = false;
+
 export function initEditor() {
     const btnDebug = document.getElementById('btn-debug');
     const editorUI = document.getElementById('editor-ui');
@@ -23,8 +26,19 @@ export function initEditor() {
     const exportModal = document.getElementById('export-modal');
     const exportCode = document.getElementById('export-code');
     const btnCloseExport = document.getElementById('btn-close-export');
+    
+    // Timeline DOM
+    const btnToggleEditor = document.getElementById('btn-toggle-editor');
+    const timelineUI = document.getElementById('timeline-ui');
 
     if (!btnDebug || !editorUI) return;
+
+    if (btnToggleEditor && timelineUI) {
+        btnToggleEditor.addEventListener('click', () => {
+            timelineActive = !timelineActive;
+            timelineUI.style.display = timelineActive ? 'flex' : 'none';
+        });
+    }
 
     btnDebug.addEventListener('click', () => {
         editorUI.style.display = editorUI.style.display === 'none' ? 'block' : 'none';
@@ -121,3 +135,46 @@ export function initEditor() {
         alert("程式碼已經成功複製到剪貼簿！");
     });
 }
+
+export function updateTimeline(elapsed, duration) {
+    if (!timelineActive) return;
+    
+    const playhead = document.getElementById('timeline-playhead');
+    const timeText = document.getElementById('timeline-time');
+    const durationText = document.getElementById('timeline-duration');
+    
+    if (!playhead || !timeText || !durationText) return;
+
+    const currentDuration = duration || Math.max(elapsed, 15); // Fallback to 15s if unknown
+    const progress = Math.min(elapsed / currentDuration, 1.0);
+    
+    playhead.style.left = `${progress * 100}%`;
+    
+    const frames = Math.floor(elapsed * 30);
+    const m = Math.floor(elapsed / 60);
+    const s = Math.floor(elapsed % 60);
+    const ms = Math.floor((elapsed % 1) * 100);
+    timeText.innerText = `Frame: ${frames.toString().padStart(4, '0')} | ${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}.${ms.toString().padStart(2, '0')}`;
+    
+    const dm = Math.floor(currentDuration / 60);
+    const ds = Math.floor(currentDuration % 60);
+    const dms = Math.floor((currentDuration % 1) * 100);
+    durationText.innerText = `${dm.toString().padStart(2, '0')}:${ds.toString().padStart(2, '0')}.${dms.toString().padStart(2, '0')}`;
+    
+    // Create random event markers once (mock events)
+    if (!eventMarkersCreated) {
+        eventMarkersCreated = true;
+        const layer = document.getElementById('timeline-events-layer');
+        if (layer) {
+            layer.innerHTML = ''; // clear
+            // Add a few test markers for visual representation
+            [0.2, 0.4, 0.6].forEach(pt => {
+                const marker = document.createElement('div');
+                marker.className = 'timeline-event-marker';
+                marker.style.left = `${pt * 100}%`;
+                layer.appendChild(marker);
+            });
+        }
+    }
+}
+

@@ -2,8 +2,15 @@ import * as THREE from 'three';
 import { VRButton } from 'three/examples/jsm/webxr/VRButton.js';
 import { scene, camera, renderer, initCore } from './src/core.js';
 import { world, initPhysics } from './src/physics.js';
-import { initAudio } from './src/audio.js';
+import { initAudio, toggleMute } from './src/audio.js';
 import { levelState, keys } from './src/state.js';
+
+window.addEventListener('DOMContentLoaded', () => {
+    const btnToggleAudio = document.getElementById('btn-toggle-audio');
+    if (btnToggleAudio) {
+        btnToggleAudio.addEventListener('click', toggleMute);
+    }
+});
 import { initPlayer, controls, catGroup, catTail, constraint, ghostBody, draggedBody, playerBody } from './src/player.js';
 
 import { loadLevel1 } from './src/levels/level1.js';
@@ -13,7 +20,7 @@ import { loadLevel4 } from './src/levels/level4.js';
 import { loadLevel5 } from './src/levels/level5.js';
 import { isAutoMode, updateNarrative, initNarrative, startAutoNarrative, stopAutoNarrative, sequences } from './src/narrative.js';
 import { isIntroCinematic, setIntroCinematic, showDialog, hideDialog, showBigTitle } from './src/state.js';
-import { isNoclip, initEditor } from './src/editor.js';
+import { isNoclip, initEditor, updateTimeline } from './src/editor.js';
 
 const levelLoaders = [null, loadLevel1, loadLevel2, loadLevel3, loadLevel4, loadLevel5];
 
@@ -173,6 +180,7 @@ renderer.setAnimationLoop(() => {
     
     if (isAutoMode) {
         updateNarrative(dt);
+        updateTimeline(clock.elapsedTime % 60, 60); // Fake a 60s loop for AutoMode
         
         // Auto cat animation
         const yaw = camera.rotation.y;
@@ -194,6 +202,8 @@ renderer.setAnimationLoop(() => {
         catTail.rotation.z = Math.sin(clock.elapsedTime * 8) * 0.25;
     } else if (isIntroCinematic) {
         const elapsed = clock.elapsedTime - introStartTime;
+        updateTimeline(elapsed, introDuration); // Trigger timeline UI updates
+        
         if (elapsed < introDuration) {
             if (levelState.customIntro) {
                 levelState.customIntro(elapsed, introDuration, dt);

@@ -59,7 +59,7 @@ export function loadLevel1() {
                 new THREE.Vector3(0, levelState.playerBaseY - 0.5, -2),
                 t
             );
-            catGroup.rotation.y = Math.PI; // In three.js, rotation.y = Math.PI makes it look away from camera (face -Z)
+            catGroup.rotation.y = 0; // Face forward (-Z)
             catTail.rotation.z = Math.sin(elapsed * 10) * 0.3; // swim tail animation
             
         } else {
@@ -71,7 +71,9 @@ export function loadLevel1() {
             const endZ = -18;
             const currentZ = THREE.MathUtils.lerp(startZ, endZ, t);
             
-            catGroup.position.set(0, levelState.playerBaseY - 0.5, currentZ);
+            // Add bobbing motion to simulate swimming in the middle
+            const bobbing = Math.sin(elapsed * 5) * 0.15;
+            catGroup.position.set(0, levelState.playerBaseY - 0.5 + bobbing, currentZ);
             catTail.rotation.z = Math.sin(elapsed * 12) * 0.2; // walk tail animation
             
             // Camera follows behind
@@ -93,8 +95,8 @@ export function loadLevel1() {
         scene.backgroundRotation.y = THREE.MathUtils.degToRad(80);
         scene.environmentRotation.y = THREE.MathUtils.degToRad(80);
     });
-    scene.fog.color.setHex(0xaaaaaa); 
-    scene.fog.density = 0.012;
+    scene.fog.color.setHex(0x0a1a2a); // Match matWater and dark blue background
+    scene.fog.density = 0.015;
 
     const sun = new THREE.DirectionalLight(0xffffee, 3);
     sun.position.set(10, 20, 10);

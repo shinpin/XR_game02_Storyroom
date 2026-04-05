@@ -10,11 +10,26 @@
     <link rel="stylesheet" href="/style.css">
   </head>
   <body>
+    <!-- Global Audio Toggle -->
+    <button id="btn-toggle-audio" class="audio-toggle-btn" title="Toggle Sound">🔊</button>
+
     <!-- 3D Canvas Container -->
     <div id="app"></div>
 
     <!-- Active Game In-World UI -->
     <div id="game-ui" class="hidden-element">
+      <button id="btn-toggle-editor" class="top-left-editor-btn">🎬 編輯器模式</button>
+      <div id="timeline-ui" class="hidden-element">
+        <div class="timeline-header">
+          <span id="timeline-time">Frame: 000 | 00:00.00</span>
+          <span>Duration: <span id="timeline-duration">00:00.00</span></span>
+        </div>
+        <div class="timeline-track" id="timeline-track">
+          <div class="timeline-events-layer" id="timeline-events-layer"></div>
+          <div class="timeline-playhead" id="timeline-playhead"></div>
+        </div>
+      </div>
+
       <!-- Cinematic Overlay (Hidden by default) -->
       <div id="cinematic-overlay" class="hidden-element">
         <div class="letterbox top"></div>
