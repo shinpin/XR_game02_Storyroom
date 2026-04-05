@@ -195,15 +195,19 @@ renderer.setAnimationLoop(() => {
     } else if (isIntroCinematic) {
         const elapsed = clock.elapsedTime - introStartTime;
         if (elapsed < introDuration) {
-            camera.rotation.y = introStartRotY + (elapsed * 0.15); // Slower pan
-            playerBody.position.set(camera.position.x, levelState.playerBaseY || 0.5, camera.position.z);
-            const yaw = camera.rotation.y;
-            const floorY = (levelState.playerBaseY || 0.5) - 0.5;
-            let fOff = cameraMode === 2 ? -4.5 : -1.8;
-            catGroup.visible = (cameraMode !== 3);
-            const forwardOffset = new THREE.Vector3(0, 0, fOff).applyAxisAngle(new THREE.Vector3(0,1,0), yaw);
-            catGroup.position.set(camera.position.x + forwardOffset.x, floorY, camera.position.z + forwardOffset.z);
-            catGroup.rotation.y = yaw;
+            if (levelState.customIntro) {
+                levelState.customIntro(elapsed, introDuration, dt);
+            } else {
+                camera.rotation.y = introStartRotY + (elapsed * 0.15); // Slower pan
+                playerBody.position.set(camera.position.x, levelState.playerBaseY || 0.5, camera.position.z);
+                const yaw = camera.rotation.y;
+                const floorY = (levelState.playerBaseY || 0.5) - 0.5;
+                let fOff = cameraMode === 2 ? -4.5 : -1.8;
+                catGroup.visible = (cameraMode !== 3);
+                const forwardOffset = new THREE.Vector3(0, 0, fOff).applyAxisAngle(new THREE.Vector3(0,1,0), yaw);
+                catGroup.position.set(camera.position.x + forwardOffset.x, floorY, camera.position.z + forwardOffset.z);
+                catGroup.rotation.y = yaw;
+            }
         } else {
             setIntroCinematic(false);
             hideDialog();

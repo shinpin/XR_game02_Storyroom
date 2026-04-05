@@ -1,10 +1,11 @@
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
-import { scene, textureLoader } from '../core.js';
+import { scene, textureLoader, camera } from '../core.js';
 import { clearLevel, updateNavMap, createPhysicsObject, createLevelDoor } from '../levelManager.js';
 import { playLevelBGM } from '../audio.js';
 import { levelState, levelGroup } from '../state.js';
 import { matWater, matLight } from '../materials.js';
+import { catGroup, playerBody, catTail } from '../player.js';
 
 export function loadLevel1() {
     clearLevel();
@@ -12,6 +13,77 @@ export function loadLevel1() {
     playLevelBGM('/BGM_01.mp3');
     
     levelState.playerBaseY = -2.5;
+    
+    let isInitialized = false;
+    let initialCameraPos = new THREE.Vector3(2, 22, 5);
+    
+    levelState.customIntro = (elapsed, duration, dt) => {
+        if (!isInitialized) {
+            isInitialized = true;
+            camera.position.copy(initialCameraPos);
+            camera.lookAt(0, levelState.playerBaseY, -10);
+            catGroup.visible = false;
+            catGroup.position.set(0, levelState.playerBaseY - 6, 1);
+            playerBody.position.set(0, levelState.playerBaseY, 0); 
+        }
+        
+        const progress = Math.min(elapsed / duration, 1.0);
+        
+        if (progress < 0.4) {
+            // Phase 1: Camera floats down
+            const p = progress / 0.4;
+            const t = p * p * (3 - 2 * p);
+            
+            camera.position.lerpVectors(
+                initialCameraPos,
+                new THREE.Vector3(0, levelState.playerBaseY + 2.5, 0),
+                t
+            );
+            
+            const lookTarget = new THREE.Vector3(0, levelState.playerBaseY, -10).lerp(new THREE.Vector3(0, levelState.playerBaseY + 1.5, -20), t);
+            camera.lookAt(lookTarget);
+            
+        } else if (progress >= 0.4 && progress < 0.6) {
+            // Phase 2: Fox swims up into view
+            if (!catGroup.visible) {
+                catGroup.visible = true;
+                camera.position.set(0, levelState.playerBaseY + 2.5, 0);
+                camera.rotation.set(0, 0, 0); // Reset rotation to face straight forward
+            }
+            
+            const p = (progress - 0.4) / 0.2;
+            const t = p * p * (3 - 2 * p);
+            
+            catGroup.position.lerpVectors(
+                new THREE.Vector3(0, levelState.playerBaseY - 6, 1.5),
+                new THREE.Vector3(0, levelState.playerBaseY - 0.5, -2),
+                t
+            );
+            catGroup.rotation.y = Math.PI; // In three.js, rotation.y = Math.PI makes it look away from camera (face -Z)
+            catTail.rotation.z = Math.sin(elapsed * 10) * 0.3; // swim tail animation
+            
+        } else {
+            // Phase 3: Push forward towards the door
+            const p = (progress - 0.6) / 0.4;
+            const t = p * p * (3 - 2 * p);
+            
+            const startZ = -2;
+            const endZ = -18;
+            const currentZ = THREE.MathUtils.lerp(startZ, endZ, t);
+            
+            catGroup.position.set(0, levelState.playerBaseY - 0.5, currentZ);
+            catTail.rotation.z = Math.sin(elapsed * 12) * 0.2; // walk tail animation
+            
+            // Camera follows behind
+            const camTargetZ = currentZ + 2.5;
+            camera.position.set(0, levelState.playerBaseY + 2.5, camTargetZ);
+            
+            // Keep camera straight to allow seamless transition to game controls
+            camera.rotation.set(-0.1, 0, 0); 
+            
+            playerBody.position.set(camera.position.x, levelState.playerBaseY, camera.position.z);
+        }
+    };
     
     textureLoader.load('/BG360_Treewater.jpg', (texture) => {
         texture.mapping = THREE.EquirectangularReflectionMapping;
