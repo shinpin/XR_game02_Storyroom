@@ -16,17 +16,19 @@ export function loadLevel4() {
     });
     scene.fog.color.setHex(0x1a120c); 
     scene.fog.density = 0.003;
-    
     const stepMat = new THREE.MeshStandardMaterial({ color: 0x4a4742, roughness: 0.9, flatShading: true });
-    const startObj = new THREE.Mesh(new THREE.BoxGeometry(5, 1, 5), stepMat);
-    startObj.position.set(0, -0.5, 8); 
+    
+    // Extend start platform to span from Z=0 to Z=10 to meet the ramp properly
+    const startObj = new THREE.Mesh(new THREE.BoxGeometry(5, 1, 10), stepMat);
+    startObj.position.set(0, -0.5, 5); 
     startObj.receiveShadow = true;
-    createPhysicsObject(startObj, new CANNON.Box(new CANNON.Vec3(2.5, 0.5, 2.5)), 0);
+    createPhysicsObject(startObj, new CANNON.Box(new CANNON.Vec3(2.5, 0.5, 5)), 0);
 
     const rampQ = new CANNON.Quaternion();
     rampQ.setFromAxisAngle(new CANNON.Vec3(1,0,0), 0.12); 
     const ramp = new THREE.Mesh(new THREE.BoxGeometry(6, 0.5, 30), stepMat);
-    ramp.position.set(0, 3, -15);
+    // Lower center height from 3 to 1.8 so the ramp edge (Z=0) matches Y=0 platform
+    ramp.position.set(0, 1.8, -15);
     const rampBody = createPhysicsObject(ramp, new CANNON.Box(new CANNON.Vec3(3, 0.25, 15)), 0);
     rampBody.quaternion.copy(rampQ);
     ramp.quaternion.copy(rampQ);

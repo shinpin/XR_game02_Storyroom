@@ -16,6 +16,11 @@ export function loadLevel3() {
     scene.fog.density = 0.02; 
     scene.background = new THREE.Color(0x0a0505);
     scene.environment = scene.background;
+
+    // Boost overall lighting for visibility
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6); // Base ambient
+    levelGroup.add(ambientLight);
+    
     const matStone = new THREE.MeshStandardMaterial({ color: 0x111116, roughness: 0.9, metalness: 0.1 });
     const matGround = new THREE.MeshStandardMaterial({ color: 0x050508, roughness: 1.0 });
 
@@ -35,7 +40,7 @@ export function loadLevel3() {
             createPhysicsObject(pillar, new CANNON.Box(new CANNON.Vec3(1, 8, 1)), 0);
             
             // Wall torches
-            const light = new THREE.PointLight(0xff6622, 1, 15);
+            const light = new THREE.PointLight(0xff6622, 100, 20); // Boosted intensity for modern three.js physically correct lights
             light.position.set(x > 0 ? x-1.5 : x+1.5, 4, z);
             levelGroup.add(light);
         }
@@ -86,7 +91,7 @@ export function loadLevel3() {
     levelState.interactables.push(obe1, obe2);
 
     // Central Light
-    const skyLight = new THREE.PointLight(0xddccff, 2, 40); 
+    const skyLight = new THREE.PointLight(0xddccff, 300, 60); // Boosted intensity
     skyLight.position.set(0, 15, gridBaseZ);
     levelGroup.add(skyLight);
 
