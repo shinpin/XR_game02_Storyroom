@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { VRButton } from 'three/examples/jsm/webxr/VRButton.js';
-import { scene, camera, renderer, initCore } from './src/core.js';
+import { scene, camera, renderer, initCore, composer, setBloomState } from './src/core.js';
 import { world, initPhysics } from './src/physics.js';
 import { initAudio, toggleMute } from './src/audio.js';
 import { levelState, keys } from './src/state.js';
@@ -9,6 +9,13 @@ window.addEventListener('DOMContentLoaded', () => {
     const btnToggleAudio = document.getElementById('btn-toggle-audio');
     if (btnToggleAudio) {
         btnToggleAudio.addEventListener('click', toggleMute);
+    }
+    
+    const bloomToggle = document.getElementById('bloom-toggle');
+    if (bloomToggle) {
+        bloomToggle.addEventListener('change', (e) => {
+            setBloomState(e.target.value === 'on');
+        });
     }
 });
 import { initPlayer, controls, catGroup, catTail, constraint, ghostBody, draggedBody, playerBody } from './src/player.js';
@@ -325,7 +332,11 @@ renderer.setAnimationLoop(() => {
         updateFn(dt);
     }
     
-    renderer.render(scene, camera);
+    if (renderer.xr.isPresenting) {
+        renderer.render(scene, camera);
+    } else {
+        composer.render();
+    }
 });
 
 // Load a default background scene for the menu

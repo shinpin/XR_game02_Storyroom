@@ -112,7 +112,7 @@ export function loadLevel1() {
     invisibleFloor.position.y = -6.0;
     createPhysicsObject(invisibleFloor, new CANNON.Box(new CANNON.Vec3(100, 0.5, 100)), 0);
 
-    const lanternMat = new THREE.MeshStandardMaterial({ color: 0xffcc00, emissive: 0xffaa00, emissiveIntensity: 1.5 });
+    const lanternMat = new THREE.MeshStandardMaterial({ color: 0xffcc00, emissive: 0xffaa00, emissiveIntensity: 3.5 });
     const woodMat = new THREE.MeshStandardMaterial({ color: 0x5c4033, roughness: 1.0 });
     const weedMat = new THREE.MeshStandardMaterial({ color: 0x2e8b57, roughness: 0.9 });
 
@@ -144,7 +144,7 @@ export function loadLevel1() {
 
     // Memory Crystals (Interactive puzzle elements)
     const crystalGeo = new THREE.OctahedronGeometry(0.5);
-    const crystalMat = new THREE.MeshStandardMaterial({ color: 0x00ffff, emissive: 0x0088cc, emissiveIntensity: 2, transparent: true, opacity: 0.8 });
+    const crystalMat = new THREE.MeshStandardMaterial({ color: 0x00ffff, emissive: 0x0088cc, emissiveIntensity: 4.0, transparent: true, opacity: 0.8 });
     
     for(let i=0; i<3; i++) {
         const crystal = new THREE.Mesh(crystalGeo, crystalMat.clone()); // clone material so each can change independently
@@ -154,7 +154,7 @@ export function loadLevel1() {
             {
                 text: "這是一塊閃爍著微光的記憶碎片... 裡面似乎封存著一段呢喃：\n「我好像曾在那棵巨大得不合常理的樹下睡著... 然後世界就變成了這樣。」\n\n你要試著去觸碰並吸收這段記憶嗎？",
                 options: [
-                    { text: "【觸碰碎片】吸收這段遺失的記憶", action: () => { crystal.material.emissiveIntensity = 4; } },
+                    { text: "【觸碰碎片】吸收這段遺失的記憶", action: () => { crystal.material.emissiveIntensity = 8; } },
                     { text: "【轉身離開】先不要去碰", action: () => {} }
                 ]
             },
@@ -168,7 +168,7 @@ export function loadLevel1() {
             {
                 text: "碎片散發著孤獨且冰冷的光...\n「還有誰在等我回家嗎？那個總會在門口叫我吃飯的聲音，越來越模糊了... 我不能就在這裡停下來。」",
                 options: [
-                    { text: "【輕輕閉眼】試著用力回想那個聲音", action: () => { crystal.material.emissiveIntensity = 6; } },
+                    { text: "【輕輕閉眼】試著用力回想那個聲音", action: () => { crystal.material.emissiveIntensity = 10; } },
                     { text: "【睜開雙眼】看著眼前這片不真實的風景", action: () => {} }
                 ]
             }
