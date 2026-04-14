@@ -4,7 +4,7 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
-
+import { VRButton } from 'three/examples/jsm/webxr/VRButton.js';
 export const scene = new THREE.Scene();
 export const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100);
 export const renderer = new THREE.WebGLRenderer({ 
@@ -32,6 +32,7 @@ export function initCore() {
     
     renderer.xr.enabled = true;
     document.getElementById('app').appendChild(renderer.domElement);
+    document.body.appendChild(VRButton.createButton(renderer));
 
     const pmremGenerator = new THREE.PMREMGenerator(renderer);
     pmremGenerator.compileEquirectangularShader();
@@ -41,7 +42,7 @@ export function initCore() {
     // Setup Post-processing
     const renderScene = new RenderPass(scene, camera);
     // params: resolution, strength (reduced 50%), radius, threshold
-    bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.9, 0.6, 0.15);
+    bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.63, 0.6, 0.15);
     const outputPass = new OutputPass();
 
     composer = new EffectComposer(renderer);
