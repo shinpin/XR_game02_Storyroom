@@ -31,7 +31,20 @@ import { isNoclip, initEditor, updateTimeline } from './src/editor.js';
 
 const levelLoaders = [null, loadLevel1, loadLevel2, loadLevel3, loadLevel4, loadLevel5];
 
-
+// Async Asset Loading Fader Manager
+let loadTimeout = null;
+THREE.DefaultLoadingManager.onStart = function ( url, itemsLoaded, itemsTotal ) {
+    const fader = document.getElementById('screen-fader');
+    if (fader) fader.style.opacity = '1'; // Fade to black
+    if(loadTimeout) clearTimeout(loadTimeout);
+};
+THREE.DefaultLoadingManager.onLoad = function ( ) {
+    const fader = document.getElementById('screen-fader');
+    // Buffer for 800ms before fading in, giving GPU time to upload textures without stuttering
+    loadTimeout = setTimeout(() => {
+        if (fader) fader.style.opacity = '0'; // Fade out to reveal game
+    }, 800); 
+};
 
 // Initialize Game Engine
 initCore();
@@ -192,7 +205,7 @@ renderer.setAnimationLoop(() => {
         // Auto cat animation
         const yaw = camera.rotation.y;
         const floorY = (levelState.playerBaseY || 0.5) - 0.5; 
-        let fOff = cameraMode === 2 ? -4.5 : -1.8;
+        let fOff = cameraMode === 2 ? -4.5 : -2.5; // push model further in front
         catGroup.visible = (cameraMode !== 3);
         const forwardOffset = new THREE.Vector3(0, 0, fOff).applyAxisAngle(new THREE.Vector3(0,1,0), yaw);
         
@@ -219,7 +232,7 @@ renderer.setAnimationLoop(() => {
                 playerBody.position.set(camera.position.x, levelState.playerBaseY || 0.5, camera.position.z);
                 const yaw = camera.rotation.y;
                 const floorY = (levelState.playerBaseY || 0.5) - 0.5;
-                let fOff = cameraMode === 2 ? -4.5 : -1.8;
+                let fOff = cameraMode === 2 ? -5.0 : -3.0; // push model further in front for cinematic
                 catGroup.visible = (cameraMode !== 3);
                 const forwardOffset = new THREE.Vector3(0, 0, fOff).applyAxisAngle(new THREE.Vector3(0,1,0), yaw);
                 catGroup.position.set(camera.position.x + forwardOffset.x, floorY, camera.position.z + forwardOffset.z);
@@ -259,15 +272,15 @@ renderer.setAnimationLoop(() => {
                 const floorY = (isNoclip) ? camera.position.y - 0.5 : (levelState.playerBaseY || 0.5) - 0.5; 
                 
                 if (!isNoclip) {
-                    let yOffset = 2.5; // Normal OTS height
-                    if (cameraMode === 2) yOffset = 4.5; // Wide angle height
+                    let yOffset = 1.8; // Lowered OTS height to see fox better
+                    if (cameraMode === 2) yOffset = 3.5; // Lowered Wide angle height
                     if (cameraMode === 3) yOffset = 0.5; // Fox eye level
                     
                     const targetCamY = (levelState.playerBaseY || 0.5) + yOffset;
                     camera.position.y += (targetCamY - camera.position.y) * 4 * dt;
                 }
 
-                let fOff = cameraMode === 2 ? -4.5 : (cameraMode === 1 ? -2.2 : 0);
+                let fOff = cameraMode === 2 ? -5.0 : (cameraMode === 1 ? -3.0 : 0);
                 let xOff = cameraMode === 1 ? -1.2 : 0; // Negative X = avatar to left, camera over right shoulder
                 
                 catGroup.visible = (cameraMode !== 3);

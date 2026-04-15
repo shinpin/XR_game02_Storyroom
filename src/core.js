@@ -41,8 +41,8 @@ export function initCore() {
     
     // Setup Post-processing
     const renderScene = new RenderPass(scene, camera);
-    // params: resolution, strength (reduced 50%), radius, threshold
-    bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.63, 0.6, 0.15);
+    // params: resolution, strength (reduced for lower bloom/exposure), radius, threshold
+    bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.2, 0.6, 0.15);
     const outputPass = new OutputPass();
 
     composer = new EffectComposer(renderer);

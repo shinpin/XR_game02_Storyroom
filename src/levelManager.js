@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { scene, camera, defaultEnv } from './core.js';
 import { world, physicsMaterial } from './physics.js';
 import { levelGroup, levelState, resetLevelGroup, resetLevelState } from './state.js';
@@ -64,12 +65,42 @@ export function createPhysicsObject(mesh, shape, mass, isInteractable = false) {
 }
 
 export function createLevelDoor(x, y, z, nextLevelId) {
-    const doorMesh = new THREE.Mesh(new THREE.PlaneGeometry(3, 5), matLight);
-    doorMesh.position.set(x, y + 2.5, z);
-    levelGroup.add(doorMesh);
+    const gltfLoader = new GLTFLoader();
+    // Use a unique query string to bypass browser cache and prevent disposed geometry bugs when changing levels
+    gltfLoader.load('/door.glb?time=' + Date.now() + Math.random(), (gltf) => {
+        const doorModel = gltf.scene;
+        
+        // Enlarge by 6 times (base was 1.5, so 1.5 * 6 = 9.0)
+        doorModel.scale.set(9.0, 9.0, 9.0);
+        doorModel.position.set(x, y, z);
+        
+        doorModel.traverse((child) => {
+            if (child.isMesh) {
+                child.castShadow = true;
+                child.receiveShadow = true;
+                if (child.material) {
+                    if (child.material.emissive) {
+                        child.material.emissive.setHex(0xaaaaaa); 
+                        child.material.emissiveIntensity = 0.2;
+                        child.material.side = THREE.DoubleSide;
+                    } else {
+                        child.material = new THREE.MeshStandardMaterial({
+                            color: child.material.color || 0xffffff,
+                            emissive: 0xaaaaaa,
+                            emissiveIntensity: 0.2,
+                            side: THREE.DoubleSide
+                        });
+                    }
+                }
+            }
+        });
+        
+        levelGroup.add(doorModel);
+    });
     
-    const dLight = new THREE.PointLight(0xeeffff, 2, 10);
-    dLight.position.set(x, y + 2.5, z + 1);
+    // Add a faint light so it acts as a guiding beacon
+    const dLight = new THREE.PointLight(0xffddaa, 2, 8);
+    dLight.position.set(x, y + 2.5, z + 1.5);
     levelGroup.add(dLight);
 
     const triggerBody = new CANNON.Body({

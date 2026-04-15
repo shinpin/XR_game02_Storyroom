@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { camera, scene } from './core.js';
 import { world, physicsMaterial } from './physics.js';
 import { levelState, showDialog } from './state.js';
@@ -90,58 +91,30 @@ export function releaseTelekinesis() {
 
 function setupCatAvatar() {
     catGroup = new THREE.Group();
-    const foxMat = new THREE.MeshStandardMaterial({ color: 0xcc5500, roughness: 0.8 }); // Fox Orange
-    const whiteMat = new THREE.MeshStandardMaterial({ color: 0xeeeeee, roughness: 0.9 }); // White parts
-
-    const bodyGeo = new THREE.CapsuleGeometry(0.15, 0.4, 4, 16);
-    const foxBody = new THREE.Mesh(bodyGeo, foxMat);
-    foxBody.rotation.x = Math.PI / 2; 
-    foxBody.position.y = 0.15;
-    catGroup.add(foxBody);
-
-    const headGeo = new THREE.SphereGeometry(0.18, 16, 16);
-    const head = new THREE.Mesh(headGeo, foxMat);
-    head.position.set(0, 0.35, -0.28);
-    catGroup.add(head);
-
-    // Fox Snout
-    const snoutGeo = new THREE.ConeGeometry(0.08, 0.2, 8);
-    const snout = new THREE.Mesh(snoutGeo, whiteMat);
-    snout.rotation.x = -Math.PI / 2;
-    snout.position.set(0, 0.3, -0.42);
-    catGroup.add(snout);
-
-    // Fox Ears (larger, pointier)
-    const earGeo = new THREE.ConeGeometry(0.06, 0.2, 8);
-    const earL = new THREE.Mesh(earGeo, foxMat);
-    earL.position.set(-0.1, 0.48, -0.30);
-    earL.rotation.z = 0.2;
-    catGroup.add(earL);
     
-    const earR = new THREE.Mesh(earGeo, foxMat);
-    earR.position.set(0.1, 0.48, -0.30);
-    earR.rotation.z = -0.2;
-    catGroup.add(earR);
-
-    // Fluffy Tail
-    catTail = new THREE.Group(); 
-    const tailBaseGeo = new THREE.ConeGeometry(0.08, 0.35, 8);
-    const tailBase = new THREE.Mesh(tailBaseGeo, foxMat);
-    tailBase.position.y = 0.15; 
-    catTail.add(tailBase);
-    
-    const tailTipGeo = new THREE.ConeGeometry(0.06, 0.15, 8);
-    const tailTip = new THREE.Mesh(tailTipGeo, whiteMat);
-    tailTip.position.y = 0.38;
-    tailTip.rotation.x = Math.PI; 
-    catTail.add(tailTip);
-
-    catTail.position.set(0, 0.2, 0.35);
-    catTail.rotation.x = -Math.PI / 4;
+    // Dummy tail to prevent crashes in other levels
+    catTail = new THREE.Group();
     catGroup.add(catTail);
-
-    catGroup.scale.set(3, 3, 3); // Enlarge fox by 3 times
     
+    const gltfLoader = new GLTFLoader();
+    gltfLoader.load('/FOX_ANI.glb', (gltf) => {
+        const foxModel = gltf.scene;
+        
+        foxModel.scale.set(3.5, 3.5, 3.5);
+        foxModel.position.set(0, 0, 0);
+        foxModel.rotation.y = Math.PI + (10 * Math.PI / 180); // Face away from the camera, rotated 10 degrees left
+        
+        foxModel.traverse((child) => {
+            if (child.isMesh) {
+                child.frustumCulled = false; 
+                child.castShadow = true;
+                child.receiveShadow = true;
+            }
+        });
+        
+        catGroup.add(foxModel);
+    });
+
     scene.add(catGroup);
 }
 
