@@ -1,14 +1,15 @@
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { scene } from '../core.js';
-import { clearLevel, updateNavMap, createPhysicsObject } from '../levelManager.js';
+import { clearLevel, createPhysicsObject } from '../levelManager.js';
 import { levelGroup, levelState } from '../state.js';
+import { parseLevel } from '../levelParser.js';
+import { level5Config } from '../configs/level5_config.js';
 import { matStone } from '../materials.js';
 
 export function loadLevel5() {
     clearLevel();
-    updateNavMap(5);
-    scene.fog.color.setHex(0x221111); scene.background.setHex(0x221111);
+    parseLevel(level5Config);
     
     const runwayL = 72; // Increased by 20%
     const runway = new THREE.Mesh(new THREE.BoxGeometry(20, 1, runwayL), matStone);

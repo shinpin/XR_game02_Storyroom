@@ -2,31 +2,17 @@ import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { scene, textureLoader } from '../core.js';
-import { clearLevel, updateNavMap, createPhysicsObject, createLevelDoor } from '../levelManager.js';
+import { clearLevel, createPhysicsObject, createLevelDoor } from '../levelManager.js';
 import { levelState, levelGroup, showDialog } from '../state.js';
+import { parseLevel } from '../levelParser.js';
+import { level3Config } from '../configs/level3_config.js';
 import { world, physicsMaterial } from '../physics.js';
 import { playLevelBGM } from '../audio.js';
 
 export function loadLevel3() {
     clearLevel();
-    updateNavMap(3);
-    playLevelBGM('/BGM_03.mp3');
+    parseLevel(level3Config);
     
-    levelState.playerBaseY = 0.5;
-    scene.fog.color.setHex(0x0a0505); 
-    scene.fog.density = 0.02; 
-    
-    // Load 360 Panorama as background and environment
-    textureLoader.load('/PanoGen_4K_cheer.jpg', (texture) => {
-        texture.mapping = THREE.EquirectangularReflectionMapping;
-        texture.colorSpace = THREE.SRGBColorSpace;
-        scene.background = texture;
-        scene.environment = texture;
-    });
-
-    // Boost overall lighting for visibility
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6); // Base ambient
-    levelGroup.add(ambientLight);
     
     const matStone = new THREE.MeshStandardMaterial({ color: 0x111116, roughness: 0.9, metalness: 0.1 });
     const matGround = new THREE.MeshStandardMaterial({ color: 0x050508, roughness: 1.0 });
@@ -223,7 +209,8 @@ export function loadLevel3() {
             puzzleSolved = true;
             targetPlate1.material.emissive.setHex(0x00ff00);
             targetPlate2.material.emissive.setHex(0x00ff00);
-            createLevelDoor(0, 0.5, -16, 4);
+            // 第一景保留門，其他景拿掉
+            // createLevelDoor(0, 0.5, -16, 4);
             import('../audio.js').then(({ playLevelBGM }) => {
                 // optional: play unlocking sound
             });

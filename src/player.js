@@ -13,6 +13,7 @@ export let draggedBody = null;
 export let constraint = null;
 export let ghostBody;
 export let playerBody;
+export let catMixer = null;
 
 const telekDistance = 5;
 const raycaster = new THREE.Raycaster();
@@ -100,7 +101,8 @@ function setupCatAvatar() {
     gltfLoader.load('/FOX_ANI.glb', (gltf) => {
         const foxModel = gltf.scene;
         
-        foxModel.scale.set(3.5, 3.5, 3.5);
+        // 放大狐狸模型 (原本為 3.5 導致在場景中太小)
+        foxModel.scale.set(50.0, 50.0, 50.0);
         foxModel.position.set(0, 0, 0);
         foxModel.rotation.y = Math.PI + (10 * Math.PI / 180); // Face away from the camera, rotated 10 degrees left
         
@@ -111,6 +113,13 @@ function setupCatAvatar() {
                 child.receiveShadow = true;
             }
         });
+        
+        if (gltf.animations && gltf.animations.length > 0) {
+            catMixer = new THREE.AnimationMixer(foxModel);
+            // Play the first animation (usually walk or run for fox)
+            const action = catMixer.clipAction(gltf.animations[0]);
+            action.play();
+        }
         
         catGroup.add(foxModel);
     });

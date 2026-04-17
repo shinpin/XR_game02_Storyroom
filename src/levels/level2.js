@@ -4,33 +4,21 @@ import { scene, textureLoader } from '../core.js';
 import { clearLevel, updateNavMap, createPhysicsObject, createLevelDoor } from '../levelManager.js';
 import { playLevelBGM } from '../audio.js';
 import { levelState, levelGroup } from '../state.js';
+import { parseLevel } from '../levelParser.js';
+import { level2Config } from '../configs/level2_config.js';
 import { matGrass, matWood } from '../materials.js';
 import { world, physicsMaterial } from '../physics.js';
 
 export function loadLevel2() {
     clearLevel();
-    updateNavMap(2);
-    playLevelBGM('/BGM_02.mp3');
+    parseLevel(level2Config);
     
-    levelState.playerBaseY = 0.5;
-
-    textureLoader.load('/BG360_VanGoghLabyrinth.jpg', (texture) => {
-        texture.mapping = THREE.EquirectangularReflectionMapping;
-        texture.colorSpace = THREE.SRGBColorSpace;
-        scene.background = texture;
-        scene.environment = texture;
-    });
-    scene.fog.color.setHex(0x080414); // Deep starry indigo
-    scene.fog.density = 0.018; 
-
+    
+    const floorY = -0.6; // Player is at 0.5, block thickness is 1, so top is -0.1
+    
     // Abstract Lighting
     const illMat1 = new THREE.MeshStandardMaterial({ color: 0xaa22ff, emissive: 0x4400aa, transparent: true, opacity: 0.85 });
     const illMat2 = new THREE.MeshStandardMaterial({ color: 0x22aaff, emissive: 0x0044aa, transparent: true, opacity: 0.85 });
-    const sun = new THREE.DirectionalLight(0xddccff, 2);
-    sun.position.set(10, 20, -10);
-    levelGroup.add(sun);
-    
-    const floorY = -0.6; // Player is at 0.5, block thickness is 1, so top is -0.1
 
     // Floating Maze Platform Matrix (0=void, 1=path, 2=spawn, 3=altar)
     const mazeLayout = [
@@ -169,7 +157,8 @@ export function loadLevel2() {
                 setTimeout(() => { flashLight.intensity = 0; }, 500);
                 
                 // Spawn the Door
-                createLevelDoor(altarX, floorY + 1.5, altarZ - 8, 3); 
+                // 第一景保留門，其他景拿掉
+                // createLevelDoor(altarX, floorY + 1.5, altarZ - 8, 3); 
                 import('../state.js').then(({ showDialog }) => {
                     showDialog('古老的機關發出轟鳴聲... 一扇光門在祭壇後方展開。');
                 });

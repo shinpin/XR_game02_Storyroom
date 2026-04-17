@@ -17,8 +17,72 @@ window.addEventListener('DOMContentLoaded', () => {
             setBloomState(e.target.value === 'on');
         });
     }
+
+    // --- FX Menu Toggle ---
+    const btnFx = document.getElementById('btn-toggle-fx');
+    const fxPanel = document.getElementById('fx-panel');
+    if (btnFx && fxPanel) {
+        btnFx.addEventListener('click', () => {
+            fxPanel.style.display = (fxPanel.style.display === 'none' || fxPanel.classList.contains('hidden-element')) ? 'block' : 'none';
+            fxPanel.classList.remove('hidden-element');
+        });
+    }
+
+    // --- Live FX Toggles ---
+    document.getElementById('toggle-bloom')?.addEventListener('change', (e) => {
+        if(bloomPass) bloomPass.enabled = e.target.checked;
+    });
+    document.getElementById('toggle-film')?.addEventListener('change', (e) => {
+        if(filmPass) filmPass.enabled = e.target.checked;
+    });
+
+    // --- Environment & Lighting Live Sliders ---
+    document.getElementById('ctrl-wireframe')?.addEventListener('change', (e) => {
+        const isWireframe = e.target.checked;
+        scene.traverse((child) => {
+            if (child.isMesh && child.geometry && child.name !== 'debug_wireframe') {
+                if (isWireframe) {
+                    // Check if already has wireframe child
+                    let hasWire = child.children.find(c => c.name === 'debug_wireframe');
+                    if (!hasWire) {
+                        const edges = new THREE.WireframeGeometry(child.geometry);
+                        const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x00ffcc, depthTest: true, opacity: 0.5, transparent: true }));
+                        line.name = 'debug_wireframe';
+                        child.add(line);
+                    }
+                } else {
+                    // Remove wireframe child
+                    const wires = child.children.filter(c => c.name === 'debug_wireframe');
+                    wires.forEach(w => {
+                        child.remove(w);
+                        w.geometry.dispose();
+                        w.material.dispose();
+                    });
+                }
+            }
+        });
+    });
+    
+    document.getElementById('ctrl-fog-density')?.addEventListener('input', (e) => {
+        if (scene.fog) scene.fog.density = parseFloat(e.target.value);
+    });
+    document.getElementById('ctrl-fog-color')?.addEventListener('input', (e) => {
+        if (scene.fog) scene.fog.color.setHex(parseInt(e.target.value.replace('#', '0x'), 16));
+    });
+    document.getElementById('ctrl-ambient-int')?.addEventListener('input', (e) => {
+        levelGroup.children.forEach(c => {
+            if (c.isAmbientLight) c.intensity = parseFloat(e.target.value);
+        });
+    });
+    document.getElementById('ctrl-main-int')?.addEventListener('input', (e) => {
+        levelGroup.children.forEach(c => {
+            if (c.isDirectionalLight) c.intensity = parseFloat(e.target.value);
+        });
+    });
 });
-import { initPlayer, controls, catGroup, catTail, constraint, ghostBody, draggedBody, playerBody } from './src/player.js';
+import { initPlayer, controls, catGroup, catTail, constraint, ghostBody, draggedBody, playerBody, catMixer } from './src/player.js';
+import { bloomPass, filmPass } from './src/core.js';
+import { levelGroup } from './src/state.js';
 
 import { loadLevel1 } from './src/levels/level1.js';
 import { loadLevel2 } from './src/levels/level2.js';
@@ -168,6 +232,9 @@ const btnReturnMenu = document.getElementById('btn-return-menu');
 document.addEventListener('unlockControlsForDialog', () => {
     controls.unlock();
 });
+document.addEventListener('lockControlsForPlay', () => {
+    controls.lock();
+});
 
 document.getElementById('start-btn').addEventListener('click', () => {
     menuOverlay.style.display = 'none';
@@ -249,6 +316,10 @@ const telekDistance = 5;
 renderer.setAnimationLoop(() => {
     const dt = Math.min(clock.getDelta(), 0.1);
     
+    if (catMixer) {
+        catMixer.update(dt);
+    }
+    
     // Debug Panel Updates
     if (isDebugPanelVisible) {
         frames++;
@@ -285,7 +356,7 @@ renderer.setAnimationLoop(() => {
         // Auto cat animation
         const yaw = camera.rotation.y;
         const floorY = (levelState.playerBaseY || 0.5) - 0.5; 
-        let fOff = cameraMode === 2 ? -4.5 : -2.5; // push model further in front
+        let fOff = cameraMode === 2 ? -3.5 : -2.5; // push model further in front
         catGroup.visible = (cameraMode !== 3);
         const forwardOffset = new THREE.Vector3(0, 0, fOff).applyAxisAngle(new THREE.Vector3(0,1,0), yaw);
         
@@ -312,7 +383,7 @@ renderer.setAnimationLoop(() => {
                 playerBody.position.set(camera.position.x, levelState.playerBaseY || 0.5, camera.position.z);
                 const yaw = camera.rotation.y;
                 const floorY = (levelState.playerBaseY || 0.5) - 0.5;
-                let fOff = cameraMode === 2 ? -5.0 : -3.0; // push model further in front for cinematic
+                let fOff = cameraMode === 2 ? -3.5 : -2.5; // push model further in front for cinematic
                 catGroup.visible = (cameraMode !== 3);
                 const forwardOffset = new THREE.Vector3(0, 0, fOff).applyAxisAngle(new THREE.Vector3(0,1,0), yaw);
                 catGroup.position.set(camera.position.x + forwardOffset.x, floorY, camera.position.z + forwardOffset.z);
@@ -321,7 +392,13 @@ renderer.setAnimationLoop(() => {
         } else {
             setIntroCinematic(false);
             hideDialog();
-            controls.lock();
+            
+            if (levelState.onIntroComplete) {
+                levelState.onIntroComplete();
+                levelState.onIntroComplete = null; // Execute only once
+            } else {
+                controls.lock();
+            }
         }
     } else {
         if (!controls.isLocked && menuOverlay.style.display !== 'none') {
@@ -352,7 +429,7 @@ renderer.setAnimationLoop(() => {
                 const floorY = (isNoclip) ? camera.position.y - 0.5 : (levelState.playerBaseY || 0.5) - 0.5; 
                 
                 if (!isNoclip) {
-                    let yOffset = 1.8; // Lowered OTS height to see fox better
+                    let yOffset = levelState.cameraOffset ? levelState.cameraOffset.height : 1.8; // Use config height
                     if (cameraMode === 2) yOffset = 3.5; // Lowered Wide angle height
                     if (cameraMode === 3) yOffset = 0.5; // Fox eye level
                     
@@ -360,8 +437,9 @@ renderer.setAnimationLoop(() => {
                     camera.position.y += (targetCamY - camera.position.y) * 4 * dt;
                 }
 
-                let fOff = cameraMode === 2 ? -5.0 : (cameraMode === 1 ? -3.0 : 0);
-                let xOff = cameraMode === 1 ? -1.2 : 0; // Negative X = avatar to left, camera over right shoulder
+                let defaultDist = levelState.cameraOffset ? levelState.cameraOffset.distance : -2.5;
+                let fOff = cameraMode === 2 ? -3.5 : (cameraMode === 1 ? defaultDist : 0);
+                let xOff = cameraMode === 1 ? -0.8 : 0; // Negative X = avatar to left, camera over right shoulder
                 
                 catGroup.visible = (cameraMode !== 3);
                 
@@ -426,8 +504,10 @@ renderer.setAnimationLoop(() => {
     }
     
     if (renderer.xr.isPresenting) {
+        renderer.info.reset();
         renderer.render(scene, camera);
     } else {
+        renderer.info.reset();
         composer.render();
     }
 });

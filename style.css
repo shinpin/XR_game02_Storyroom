@@ -47,13 +47,26 @@ body, html {
   border-radius: 50%;
   transform: translate(-50%, -50%);
   pointer-events: none;
-  transition: transform 0.2s, border-color 0.2s;
+  transition: transform 0.2s, border-color 0.2s, background-color 0.2s;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 0px; /* Hide icon when not active */
 }
 
 #crosshair.active {
-  transform: translate(-50%, -50%) scale(1.5);
-  border-color: rgba(255, 200, 100, 0.9);
-  box-shadow: 0 0 10px rgba(255, 200, 100, 0.6);
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 0;
+  transform: translate(-50%, -50%) scale(1.2);
+  box-shadow: none;
+  font-size: 24px;
+}
+
+#crosshair.active::after {
+  content: '👆';
+  text-shadow: 0 0 10px rgba(255, 200, 100, 0.8);
 }
 
 #game-instructions {
@@ -788,7 +801,7 @@ body, html {
 /* --- Editor Timeline UI --- */
 .top-left-editor-btn {
   position: absolute;
-  top: 70px;
+  top: 20px;
   left: 20px;
   background: rgba(10, 15, 25, 0.6);
   border: 1px solid rgba(100, 200, 255, 0.3);

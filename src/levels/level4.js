@@ -1,21 +1,15 @@
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { scene, textureLoader } from '../core.js';
-import { clearLevel, updateNavMap, createPhysicsObject, createLevelDoor } from '../levelManager.js';
+import { clearLevel, createPhysicsObject, createLevelDoor } from '../levelManager.js';
 import { levelGroup } from '../state.js';
+import { parseLevel } from '../levelParser.js';
+import { level4Config } from '../configs/level4_config.js';
 
 export function loadLevel4() {
     clearLevel();
-    updateNavMap(4);
+    parseLevel(level4Config);
     
-    textureLoader.load('/BG360_Chaos_Giant.jpg', (texture) => {
-        texture.mapping = THREE.EquirectangularReflectionMapping;
-        texture.colorSpace = THREE.SRGBColorSpace;
-        scene.background = texture;
-        scene.environment = texture;
-    });
-    scene.fog.color.setHex(0x1a120c); 
-    scene.fog.density = 0.003;
     const stepMat = new THREE.MeshStandardMaterial({ color: 0x4a4742, roughness: 0.9, flatShading: true });
     
     // Extend start platform to span from Z=0 to Z=10 to meet the ramp properly
@@ -110,5 +104,6 @@ export function loadLevel4() {
     levelGroup.add(sunLight);
     levelGroup.add(sunLight.target);
 
-    createLevelDoor(Math.sin(9 * 0.8) * 8, 9 * 2.5 + 2, -10 - (9*6), 5); 
+    // 第一景保留門，其他景拿掉
+    // createLevelDoor(Math.sin(9 * 0.8) * 8, 9 * 2.5 + 2, -10 - (9*6), 5); 
 }
