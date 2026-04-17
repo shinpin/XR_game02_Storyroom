@@ -55,6 +55,7 @@ export function startAutoNarrative() {
     currentSequenceIndex = 0;
     cinematicOverlay.style.display = 'flex';
     setCatColor(0xffcc00); // Yellow for auto mode
+    console.log("[Debug] 自動劇情模式(Auto Narrative) 已啟動");
     playSequence(0);
 }
 
@@ -120,6 +121,7 @@ function playSequence(index) {
                 subtitleEl.innerText += char;
                 charIndex++;
                 if (charIndex >= txt.length) {
+                    console.log(`[Debug] 打字機動畫完成: ${txt}`);
                     clearInterval(subtitleTypeWriterInterval);
                     subtitleTypeWriterInterval = null;
                     if (chunkIdx < chunks.length - 1) {
@@ -135,6 +137,7 @@ function playSequence(index) {
                 }
             }, 80);
         };
+        console.log(`[Debug] 準備開始播放場景 ${seq.level} 的字幕動畫`);
         playNext();
     });
 }
@@ -148,6 +151,10 @@ export function updateNarrative(dt) {
     let progress = sequenceTime / seq.duration;
     if (progress > 1) {
         progress = 1;
+    }
+
+    if (Math.abs(progress - 0.5) < 0.005) {
+        console.log(`[Debug] 運鏡動畫執行中... (進度: ${(progress*100).toFixed(1)}%)`);
     }
 
     // Smooth movement

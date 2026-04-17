@@ -69,6 +69,24 @@ initNarrative((levelIdx) => {
 const gameUI = document.getElementById('game-ui');
 const menuOverlay = document.getElementById('menu-overlay');
 
+// Debug Mode Setup
+let isDebugPanelVisible = false;
+const debugPanel = document.getElementById('xr-debug-panel');
+const dbgFps = document.getElementById('dbg-fps');
+const dbgDrawcalls = document.getElementById('dbg-drawcalls');
+const dbgTriangles = document.getElementById('dbg-triangles');
+const dbgGeom = document.getElementById('dbg-geom');
+const dbgTextures = document.getElementById('dbg-textures');
+const dbgState = document.getElementById('dbg-state');
+const dbgMemory = document.getElementById('dbg-memory');
+let frames = 0;
+let prevTime = performance.now();
+
+function toggleDebugPanel() {
+    !!isDebugPanelVisible ? (isDebugPanelVisible = false) : (isDebugPanelVisible = true);
+    if(debugPanel) debugPanel.style.display = isDebugPanelVisible ? 'block' : 'none';
+}
+
 // Camera Modes
 export let cameraMode = 1;
 const btnCam1 = document.getElementById('cam-mode-1');
@@ -137,7 +155,15 @@ document.addEventListener('keydown', (e) => {
     if (e.key === '1') setCameraMode(1);
     if (e.key === '2') setCameraMode(2);
     if (e.key === '3') setCameraMode(3);
+    
+    // Toggle Debug Panel (F3 or backtick ~)
+    if (e.key === 'F3' || e.key === '`') {
+        e.preventDefault();
+        toggleDebugPanel();
+    }
 });
+
+const btnReturnMenu = document.getElementById('btn-return-menu');
 
 document.addEventListener('unlockControlsForDialog', () => {
     controls.unlock();
@@ -146,6 +172,7 @@ document.addEventListener('unlockControlsForDialog', () => {
 document.getElementById('start-btn').addEventListener('click', () => {
     menuOverlay.style.display = 'none';
     gameUI.style.display = 'block';
+    if(btnReturnMenu) btnReturnMenu.classList.remove('hidden-element');
     if(vrButton) vrButton.style.opacity = '0';
     if(vrButton) vrButton.style.pointerEvents = 'none';
     
@@ -158,9 +185,28 @@ document.getElementById('start-btn').addEventListener('click', () => {
     }
 });
 
+// Help UI & Top UI bindings
+const helpModal = document.getElementById('help-modal');
+document.getElementById('btn-show-help').addEventListener('click', () => {
+    helpModal.classList.remove('hidden-element');
+});
+document.getElementById('btn-close-help').addEventListener('click', () => {
+    helpModal.classList.add('hidden-element');
+});
+document.getElementById('btn-toggle-debug-ui').addEventListener('click', () => {
+    toggleDebugPanel();
+});
+if(btnReturnMenu) {
+    btnReturnMenu.addEventListener('click', () => {
+        // Unlock controls which triggers menu return logic
+        controls.unlock();
+    });
+}
+
 document.getElementById('auto-btn').addEventListener('click', () => {
     menuOverlay.style.display = 'none';
     gameUI.style.display = 'block';
+    if(btnReturnMenu) btnReturnMenu.classList.remove('hidden-element');
     if(vrButton) vrButton.style.opacity = '0';
     if(vrButton) vrButton.style.pointerEvents = 'none';
     startAutoNarrative();
@@ -185,6 +231,7 @@ controls.addEventListener('unlock', () => {
     if (isAutoMode) stopAutoNarrative();
     gameUI.style.display = 'none';
     menuOverlay.style.display = 'flex';
+    if(btnReturnMenu) btnReturnMenu.classList.add('hidden-element');
     if(vrButton) vrButton.style.opacity = '1';
     if(vrButton) vrButton.style.pointerEvents = 'auto';
 });
@@ -198,6 +245,35 @@ const telekDistance = 5;
 renderer.setAnimationLoop(() => {
     const dt = Math.min(clock.getDelta(), 0.1);
     
+    // Debug Panel Updates
+    if (isDebugPanelVisible) {
+        frames++;
+        const time = performance.now();
+        if (time >= prevTime + 1000) {
+            if(dbgFps) dbgFps.textContent = Math.round((frames * 1000) / (time - prevTime));
+            prevTime = time;
+            frames = 0;
+            
+            // Update performance info
+            if(dbgDrawcalls) dbgDrawcalls.textContent = renderer.info.render.calls;
+            if(dbgTriangles) dbgTriangles.textContent = renderer.info.render.triangles;
+            if(dbgGeom) dbgGeom.textContent = renderer.info.memory.geometries;
+            if(dbgTextures) dbgTextures.textContent = renderer.info.memory.textures;
+            
+            if(dbgMemory && performance.memory) {
+                dbgMemory.textContent = (performance.memory.usedJSHeapSize / 1048576).toFixed(1) + " MB";
+            }
+            
+            // State
+            let currentStateInfo = "Menu";
+            if (isAutoMode) currentStateInfo = "Auto Narrative";
+            else if (isIntroCinematic) currentStateInfo = "Cinematic";
+            else if (controls.isLocked) currentStateInfo = "Playing (FPS)";
+            else if (isNoclip) currentStateInfo = "Editor/Noclip";
+            if(dbgState) dbgState.textContent = currentStateInfo;
+        }
+    }
+
     if (isAutoMode) {
         updateNarrative(dt);
         updateTimeline(clock.elapsedTime % 60, 60); // Fake a 60s loop for AutoMode

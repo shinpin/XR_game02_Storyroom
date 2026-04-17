@@ -1,0 +1,11 @@
+# XR Storyroom AI Assistant Rules
+
+## Knowledge Base Automation
+1. **Always Update Documentation**: Whenever you fixed a complex bug, integrated a new system (like 3D models or physics), or successfully configured a development tool (like WebXR or Vite), you MUST automatically summarize the knowledge.
+2. **Format**: Create a Markdown file in the `docs/` folder. Use the English naming convention with a number prefix (e.g., `02_CannonJS_Physics_Setup.md`).
+3. **Structure**: 
+   - Start with a clear Title and "Last Updated" date.
+   - Summarize the *Problem* and the *Solution/Knowledge*.
+   - Make it modular and easy to read.
+   - Use headings, code blocks for config snippets, and bullet points.
+4. **NotebookLM Ready**: Assume that the files in `docs/` will be uploaded to Google NotebookLM. Ensure the context is self-contained so the LM can understand it without the rest of the codebase.
