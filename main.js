@@ -196,10 +196,19 @@ document.getElementById('btn-close-help').addEventListener('click', () => {
 document.getElementById('btn-toggle-debug-ui').addEventListener('click', () => {
     toggleDebugPanel();
 });
+function returnToMenu() {
+    controls.unlock();
+    if (isAutoMode) stopAutoNarrative();
+    gameUI.style.display = 'none';
+    menuOverlay.style.display = 'flex';
+    if(btnReturnMenu) btnReturnMenu.classList.add('hidden-element');
+    if(vrButton) vrButton.style.opacity = '1';
+    if(vrButton) vrButton.style.pointerEvents = 'auto';
+}
+
 if(btnReturnMenu) {
     btnReturnMenu.addEventListener('click', () => {
-        // Unlock controls which triggers menu return logic
-        controls.unlock();
+        returnToMenu();
     });
 }
 
@@ -228,12 +237,7 @@ for (let i = 1; i <= 5; i++) {
 }
 
 controls.addEventListener('unlock', () => {
-    if (isAutoMode) stopAutoNarrative();
-    gameUI.style.display = 'none';
-    menuOverlay.style.display = 'flex';
-    if(btnReturnMenu) btnReturnMenu.classList.add('hidden-element');
-    if(vrButton) vrButton.style.opacity = '1';
-    if(vrButton) vrButton.style.pointerEvents = 'auto';
+    returnToMenu();
 });
 
 
