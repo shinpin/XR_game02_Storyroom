@@ -29,20 +29,15 @@
       Textures: <span id="dbg-textures" style="color:#fff;">0</span><br/><br/>
       State: <span id="dbg-state" style="color:#ffcc00;">Loading</span><br/><br/>
       
-      <strong style="color:#ffcc00;">[🌍 Environment & Lighting]</strong><br/><br/>
-      <div style="pointer-events:auto; display:flex; flex-direction:column; gap:5px;">
-        <label>Wireframe: <input type="checkbox" id="ctrl-wireframe" style="vertical-align:middle;"></label>
-        <label>Fog Density: <input type="range" id="ctrl-fog-density" min="0" max="0.1" step="0.001" value="0.015" style="width:100px; vertical-align:middle;"></label>
-        <label>Fog Color: <input type="color" id="ctrl-fog-color" value="#020205" style="vertical-align:middle;"></label>
-        <label>Ambient Light: <input type="range" id="ctrl-ambient-int" min="0" max="5" step="0.1" value="0.5" style="width:100px; vertical-align:middle;"></label>
-        <label>Main Light: <input type="range" id="ctrl-main-int" min="0" max="10" step="0.1" value="3" style="width:100px; vertical-align:middle;"></label>
-      </div>
+
     </div>
 
     <!-- Global Top Bar (Always visible) -->
     <div class="top-bar" style="position:fixed; top:70px; left:20px; right:20px; display:flex; justify-content:space-between; z-index:9000; pointer-events:none;">
       <div style="display:flex; gap:10px; pointer-events:auto;">
         <div class="debug-tag clickable" id="btn-debug" style="background: rgba(40,40,40,0.8); cursor: pointer; padding: 6px 12px; border-radius: 6px; border: 1px solid #555; color: #fff; transition: background 0.2s;"><span>[D] DIRECTOR</span></div>
+        <div class="debug-tag clickable" id="btn-scene-editor" style="background: rgba(120,40,200,0.8); cursor: pointer; padding: 6px 12px; border-radius: 6px; border: 1px solid #b84dff; color: #fff; transition: background 0.2s;"><span>[⚒️] SCENE EDITOR</span></div>
+        <div class="debug-tag clickable" id="btn-editor-play" style="display:none; background: rgba(50,50,50,0.8); cursor: pointer; padding: 6px 12px; border-radius: 6px; border: 1px solid #ffcc00; color: #ffcc00; transition: background 0.2s;"><span>▶️ 動畫延遲撥放 (Paused)</span></div>
         <div class="debug-tag clickable" id="btn-toggle-debug-ui" style="background: rgba(0, 50, 0, 0.8); cursor: pointer; padding: 6px 12px; border-radius: 6px; border: 1px solid #0f0; color: #0f0; transition: background 0.2s;"><span>[⚙️] DEBUG</span></div>
         <div class="debug-tag clickable" id="btn-show-help" style="background: rgba(0, 100, 255, 0.8); cursor: pointer; padding: 6px 12px; border-radius: 6px; border: 1px solid #66ccff; color: #fff; transition: background 0.2s;"><span>[?] HELP (教學)</span></div>
         <div class="debug-tag clickable hidden-element" id="btn-return-menu" style="background: rgba(255, 50, 50, 0.8); cursor: pointer; padding: 6px 12px; border-radius: 6px; border: 1px solid #ff6666; color: #fff; transition: background 0.2s;"><span>⮌ 返回 (RETURN)</span></div>
@@ -59,7 +54,7 @@
         <button id="btn-toggle-audio" class="audio-toggle-btn" style="position:static;" title="Toggle Sound">🔊</button>
         <button id="btn-toggle-fx" class="glow-btn" style="min-width:auto; padding:8px 15px; font-size:1rem; border-radius:8px;">✨ FX</button>
       </div>
-      <div id="fx-panel" class="hidden-element" style="pointer-events:auto; background:rgba(10,15,25,0.85); backdrop-filter:blur(8px); border:1px solid rgba(100,200,255,0.3); border-radius:8px; padding:15px; margin-top:10px; color:#fff; font-family:'Inter', sans-serif; width:200px;">
+      <div id="fx-panel" class="hidden-element" style="pointer-events:auto; background:rgba(10,15,25,0.85); backdrop-filter:blur(8px); border:1px solid rgba(100,200,255,0.3); border-radius:8px; padding:15px; margin-top:10px; color:#fff; font-family:'Inter', sans-serif; width:220px; box-shadow: 0 5px 15px rgba(0,0,0,0.6);">
         <h4 style="margin:0 0 10px 0; color:#66ccff; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:5px;">Post-Processing</h4>
         
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
@@ -71,7 +66,51 @@
           <label style="font-size:0.85rem; cursor:pointer;" for="toggle-film">Film Grain (底片)</label>
           <input type="checkbox" id="toggle-film" style="cursor:pointer;">
         </div>
+
+        <h4 style="margin:15px 0 10px 0; color:#ffcc00; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:5px;">Environment & Lighting</h4>
+        <div style="display:flex; flex-direction:column; gap:5px;">
+          <label style="font-size:0.85rem; display:flex; justify-content:space-between;">Wireframe: <input type="checkbox" id="ctrl-wireframe"></label>
+          <label style="font-size:0.85rem; display:flex; justify-content:space-between;">Fog Dens: <input type="range" id="ctrl-fog-density" min="0" max="0.1" step="0.001" value="0.015" style="width:80px;"></label>
+          <label style="font-size:0.85rem; display:flex; justify-content:space-between;">Fog Color: <input type="color" id="ctrl-fog-color" value="#020205"></label>
+          <label style="font-size:0.85rem; display:flex; justify-content:space-between;">Amb Light: <input type="range" id="ctrl-ambient-int" min="0" max="5" step="0.1" value="0.5" style="width:80px;"></label>
+          <label style="font-size:0.85rem; display:flex; justify-content:space-between;">Main Light: <input type="range" id="ctrl-main-int" min="0" max="10" step="0.1" value="3" style="width:80px;"></label>
+        </div>
+
+        <h4 style="margin:15px 0 10px 0; color:#44ff44; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:5px;">Camera Parameters</h4>
+        <div style="display:flex; flex-direction:column; gap:5px;">
+          <label style="font-size:0.85rem; display:flex; justify-content:space-between;">FOV: <input type="range" id="ctrl-cam-fov" min="30" max="120" step="1" value="75" style="width:80px;"></label>
+          <label style="font-size:0.85rem; display:flex; justify-content:space-between;">Height: <input type="range" id="ctrl-cam-height" min="0" max="10" step="0.1" value="1.8" style="width:80px;"></label>
+          <label style="font-size:0.85rem; display:flex; justify-content:space-between;">Dist: <input type="range" id="ctrl-cam-dist" min="-10" max="10" step="0.5" value="-2.5" style="width:80px;"></label>
+        </div>
+
+        <h4 style="margin:15px 0 10px 0; color:#ff44ff; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:5px;">Hierarchy Visibility</h4>
+        <div style="display:flex; flex-direction:column; gap:5px;">
+          <label style="font-size:0.85rem; display:flex; justify-content:space-between; cursor:pointer;">Terrain (地形)<input type="checkbox" id="ctrl-vis-terrain" checked></label>
+          <label style="font-size:0.85rem; display:flex; justify-content:space-between; cursor:pointer;">Objects (靜態)<input type="checkbox" id="ctrl-vis-objects" checked></label>
+          <label style="font-size:0.85rem; display:flex; justify-content:space-between; cursor:pointer;">Interactables <input type="checkbox" id="ctrl-vis-interactables" checked></label>
+          <label style="font-size:0.85rem; display:flex; justify-content:space-between; cursor:pointer;">Particles (粒子層)<input type="checkbox" id="ctrl-vis-particles" checked></label>
+        </div>
       </div>
+    </div>
+
+    <!-- Hierarchy Outliner Panel (Left Side) -->
+    <div id="hierarchy-panel" class="hidden-element" style="position:fixed; top:120px; left:20px; bottom:120px; z-index:9100; pointer-events:auto; background:rgba(10,15,25,0.85); backdrop-filter:blur(8px); border:1px solid rgba(100,200,255,0.3); border-radius:8px; padding:15px; color:#fff; font-family:'Inter', sans-serif; width:220px; overflow-y:auto; display:flex; flex-direction:column;">
+      <h4 style="margin:0 0 10px 0; color:#66ccff; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:5px; display:flex; justify-content:space-between; align-items:center;">
+        Scene Hierarchy
+        <button id="btn-refresh-hierarchy" style="background:none; border:none; color:#ffcc00; cursor:pointer; font-size:16px;" title="Refresh List">🔄</button>
+      </h4>
+      <div id="hierarchy-list" style="display:flex; flex-direction:column; gap:4px; font-size:0.85rem;">
+        <!-- Hierarchy items will be injected here via JavaScript -->
+      </div>
+    </div>
+
+    <!-- Bottom Left Coordinates Panel -->
+    <div id="coord-panel" class="hidden-element" style="position:fixed; bottom:20px; left:20px; z-index:9100; pointer-events:auto; background:rgba(0,20,50,0.8); border:1px solid #00aaff; border-radius:6px; padding:10px; color:#fff; font-family:'Inter', monospace; font-size:12px; cursor:pointer; min-width:140px; transition: background 0.2s;">
+      <div style="color:#00aaff; font-weight:bold; margin-bottom:5px;">🌐 World Coords</div>
+      <div>X: <span id="coord-x">0.00</span></div>
+      <div>Y: <span id="coord-y">0.00</span></div>
+      <div>Z: <span id="coord-z">0.00</span></div>
+      <div style="margin-top:8px; font-size:10px; color:#aaa; border-top:1px solid #333; padding-top:4px;">(Click to Toggle Object Axes)</div>
     </div>
 
     <!-- Active Game In-World UI -->

@@ -20,15 +20,25 @@ export function loadLevel3() {
     const roomW = 30; // -15 to +15
     const roomZ = 40; // -20 to +20
 
-    // Ground Floor
-    const ground = new THREE.Mesh(new THREE.BoxGeometry(roomW, 1, roomZ), matGround);
-    ground.position.set(0, -0.5, 0);
-    createPhysicsObject(ground, new CANNON.Box(new CANNON.Vec3(roomW/2, 0.5, roomZ/2)), 0);
+    // Ground Floor (Terrain)
+    const terrainGeo = new THREE.PlaneGeometry(roomW, roomZ, 16, 16);
+    const terrain = new THREE.Mesh(terrainGeo, matGround);
+    terrain.rotation.x = -Math.PI / 2; // Flat on ground
+    terrain.position.set(0, 0, 0);     // 中心 0.0
+    levelGroup.add(terrain);
+    
+    // Physics body for Terrain, physically slightly offset down to match surface at 0.0
+    // We create the body manually instead of using createPhysicsObject so the main loop DOES NOT overwrite our PlaneGeometry's -90 degree rotation!
+    const groundShape = new CANNON.Box(new CANNON.Vec3(roomW/2, 0.05, roomZ/2));
+    const terrainBody = new CANNON.Body({ mass: 0, material: physicsMaterial, shape: groundShape });
+    terrainBody.position.set(0, -0.05, 0); // 貼近下方的面
+    world.addBody(terrainBody);
+    // Explicitly do not push this to levelState.rigidBodies so its rotation is not overwritten.
 
 
     // Warrior Statues (Tomb feel)
     const gltfLoader = new GLTFLoader();
-    gltfLoader.load('/worrior_x5.glb', (gltf) => {
+    gltfLoader.load('/worrior_x5.glb?time=' + Date.now(), (gltf) => {
         const warriorModel = gltf.scene;
         // Adjust scale to match the 4-unit tall obelisks
         warriorModel.scale.set(0.16, 0.16, 0.16); 
@@ -69,7 +79,7 @@ export function loadLevel3() {
     });
 
     // Tiger Statues (老虎雕像) at A and B Positions
-    gltfLoader.load('/warrior_taiger.glb', (gltf) => {
+    gltfLoader.load('/warrior_taiger.glb?time=' + Date.now(), (gltf) => {
         const tigerModel = gltf.scene;
         tigerModel.scale.set(0.16, 0.16, 0.16); // adjust scale as needed
         

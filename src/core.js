@@ -11,7 +11,7 @@ import { AfterimagePass } from 'three/examples/jsm/postprocessing/AfterimagePass
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { VRButton } from 'three/examples/jsm/webxr/VRButton.js';
 export const scene = new THREE.Scene();
-export const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100);
+export const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 export const renderer = new THREE.WebGLRenderer({ 
     antialias: true, 
     alpha: false,
@@ -31,7 +31,11 @@ export function initCore() {
     scene.fog = new THREE.FogExp2(0x020205, 0.03);
     camera.position.set(0, 1.8, 8);
     
-    renderer.setSize(window.innerWidth, window.innerHeight);
+    const appEl = document.getElementById('app');
+    const w = appEl.clientWidth;
+    const h = appEl.clientHeight;
+    
+    renderer.setSize(w, h);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -54,7 +58,7 @@ export function initCore() {
     // Setup Post-processing
     const renderScene = new RenderPass(scene, camera);
     // params: resolution, strength (reduced for lower bloom/exposure), radius, threshold
-    bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.08, 0.5, 0.85);
+    bloomPass = new UnrealBloomPass(new THREE.Vector2(w, h), 0.08, 0.5, 0.85);
     const outputPass = new OutputPass();
 
     composer = new EffectComposer(renderer);
@@ -86,12 +90,18 @@ export function initCore() {
 
     composer.addPass(outputPass);
     
-    window.addEventListener('resize', () => {
-        camera.aspect = window.innerWidth / window.innerHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        composer.setSize(window.innerWidth, window.innerHeight);
-    });
+    window.addEventListener('resize', triggerResize);
+}
+
+export function triggerResize() {
+    const appEl = document.getElementById('app');
+    if(!appEl) return;
+    const w = appEl.clientWidth;
+    const h = appEl.clientHeight;
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+    renderer.setSize(w, h);
+    if(composer) composer.setSize(w, h);
 }
 
 export function setBloomState(enabled) {

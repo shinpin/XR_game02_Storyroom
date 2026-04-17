@@ -31,13 +31,59 @@ export function parseLevel(config) {
     // 5. Setup Environment (Skybox, Fog, Background)
     if (config.environment) {
         if (config.environment.skybox) {
-            textureLoader.load(config.environment.skybox, (texture) => {
-                texture.mapping = THREE.EquirectangularReflectionMapping;
+            const cacheBusterUrl = config.environment.skybox + '?time=' + Date.now();
+            textureLoader.load(cacheBusterUrl, (texture) => {
                 texture.colorSpace = THREE.SRGBColorSpace;
-                scene.background = texture;
+                
+                // sky 全景球 改成 skybox
+                // 使用自訂 Shader 將全景圖連續貼覆到 6 個面上
+                const skyGeo = new THREE.BoxGeometry(400, 400, 400);
+                
+                const vertexShader = `
+                    varying vec3 vPosition;
+                    void main() {
+                        vPosition = position;
+                        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                    }
+                `;
+                
+                const fragmentShader = `
+                    uniform sampler2D tEquirect;
+                    varying vec3 vPosition;
+                    #define RECIPROCAL_PI 0.3183098861837907
+                    #define RECIPROCAL_PI2 0.15915494309189535
+                    void main() {
+                        vec3 dir = normalize(vPosition);
+                        vec2 uv;
+                        uv.y = asin(clamp(dir.y, -1.0, 1.0)) * RECIPROCAL_PI + 0.5;
+                        uv.x = atan(dir.z, dir.x) * RECIPROCAL_PI2 + 0.5;
+                        gl_FragColor = texture2D(tEquirect, uv);
+                        #include <tonemapping_fragment>
+                        #include <colorspace_fragment>
+                    }
+                `;
+
+                const skyMat = new THREE.ShaderMaterial({
+                    uniforms: { tEquirect: { value: texture } },
+                    vertexShader: vertexShader,
+                    fragmentShader: fragmentShader,
+                    side: THREE.BackSide,
+                    depthWrite: false,
+                    depthTest: false
+                });
+
+                const skyboxMesh = new THREE.Mesh(skyGeo, skyMat);
+                // 確保天空盒永遠在最背景渲染，不會擋到任何場景物件
+                skyboxMesh.renderOrder = -100;
+                levelGroup.add(skyboxMesh);
+
+                // Retain environment for lighting, remove scene.background
+                texture.mapping = THREE.EquirectangularReflectionMapping;
                 scene.environment = texture;
+                scene.background = new THREE.Color(config.environment.backgroundColor || 0x000000);
+                
                 if (config.environment.skyboxRotationY !== undefined) {
-                    scene.backgroundRotation.y = config.environment.skyboxRotationY;
+                    skyboxMesh.rotation.y = config.environment.skyboxRotationY;
                     scene.environmentRotation.y = config.environment.skyboxRotationY;
                 }
             });

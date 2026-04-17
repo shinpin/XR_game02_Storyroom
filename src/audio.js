@@ -6,7 +6,7 @@ export const globalBGM = new THREE.Audio(audioListener);
 const audioLoader = new THREE.AudioLoader();
 let currentBGMUrl = null;
 
-export let isMuted = false;
+export let isMuted = true;
 
 export function toggleMute() {
     isMuted = !isMuted;
@@ -17,6 +17,11 @@ export function toggleMute() {
 
 export function initAudio() {
     camera.add(audioListener);
+    audioListener.setMasterVolume(isMuted ? 0 : 1);
+    
+    // Sync UI Button initial state
+    const btn = document.getElementById('btn-toggle-audio');
+    if (btn) btn.innerText = isMuted ? '🔈' : '🔊';
 }
 
 export function playLevelBGM(url) {

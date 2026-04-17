@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { VRButton } from 'three/examples/jsm/webxr/VRButton.js';
-import { scene, camera, renderer, initCore, composer, setBloomState } from './src/core.js';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js';
+import { scene, camera, renderer, initCore, composer, setBloomState, triggerResize } from './src/core.js';
 import { world, initPhysics } from './src/physics.js';
 import { initAudio, toggleMute } from './src/audio.js';
 import { levelState, keys } from './src/state.js';
@@ -79,6 +81,76 @@ window.addEventListener('DOMContentLoaded', () => {
             if (c.isDirectionalLight) c.intensity = parseFloat(e.target.value);
         });
     });
+
+    // --- Camera Parameters ---
+    document.getElementById('ctrl-cam-fov')?.addEventListener('input', (e) => {
+        if (camera && camera.isPerspectiveCamera) {
+            camera.fov = parseFloat(e.target.value);
+            camera.updateProjectionMatrix();
+        }
+    });
+    document.getElementById('ctrl-cam-height')?.addEventListener('input', (e) => {
+        if (!levelState.cameraOffset) levelState.cameraOffset = { distance: -2.5, height: 1.8 };
+        levelState.cameraOffset.height = parseFloat(e.target.value);
+    });
+    document.getElementById('ctrl-cam-dist')?.addEventListener('input', (e) => {
+        if (!levelState.cameraOffset) levelState.cameraOffset = { distance: -2.5, height: 1.8 };
+        levelState.cameraOffset.distance = parseFloat(e.target.value);
+    });
+
+    // --- Hierarchy Visibility Toggles ---
+    const updateHierarchyVis = () => {
+        const visTerrain = document.getElementById('ctrl-vis-terrain')?.checked ?? true;
+        const visObjects = document.getElementById('ctrl-vis-objects')?.checked ?? true;
+        const visInteract = document.getElementById('ctrl-vis-interactables')?.checked ?? true;
+        const visParticles = document.getElementById('ctrl-vis-particles')?.checked ?? true;
+        
+        levelGroup.traverse((child) => {
+            if ((child.isMesh || child.isPoints) && child.name !== 'debug_wireframe' && child.name !== 'debug_axes' && child.name !== 'debug_axes_box') {
+                if (child.isPoints) {
+                    child.visible = visParticles;
+                } else if (child.userData.isInteractable) {
+                    child.visible = visInteract;
+                } else if (child.geometry && child.geometry.type === 'PlaneGeometry') {
+                    child.visible = visTerrain;
+                } else if (!child.material || !child.material.isShaderMaterial) {
+                    child.visible = visObjects;
+                }
+            }
+        });
+    };
+    document.getElementById('ctrl-vis-terrain')?.addEventListener('change', updateHierarchyVis);
+    document.getElementById('ctrl-vis-objects')?.addEventListener('change', updateHierarchyVis);
+    document.getElementById('ctrl-vis-interactables')?.addEventListener('change', updateHierarchyVis);
+    document.getElementById('ctrl-vis-particles')?.addEventListener('change', updateHierarchyVis);
+
+    // --- Coord Panel & Object Axes Toggler ---
+    let isAxesVisible = false;
+    document.getElementById('coord-panel')?.addEventListener('click', () => {
+        isAxesVisible = !isAxesVisible;
+        levelGroup.traverse((child) => {
+            if (child.isMesh && child.name !== 'debug_wireframe' && (!child.material || !child.material.isShaderMaterial)) {
+                if (isAxesVisible) {
+                    const hasAxes = child.children.find(c => c.name === 'debug_axes');
+                    if (!hasAxes) {
+                        const axes = new THREE.AxesHelper( 2 );
+                        axes.name = 'debug_axes';
+                        child.add(axes);
+                        const box = new THREE.BoxHelper( child, 0x00aaff );
+                        box.name = 'debug_axes_box';
+                        child.add(box);
+                    }
+                } else {
+                    const guides = child.children.filter(c => c.name === 'debug_axes' || c.name === 'debug_axes_box');
+                    guides.forEach(g => {
+                        child.remove(g);
+                        if(g.geometry) g.geometry.dispose();
+                        if(g.material) g.material.dispose();
+                    });
+                }
+            }
+        });
+    });
 });
 import { initPlayer, controls, catGroup, catTail, constraint, ghostBody, draggedBody, playerBody, catMixer } from './src/player.js';
 import { bloomPass, filmPass } from './src/core.js';
@@ -149,6 +221,15 @@ let prevTime = performance.now();
 function toggleDebugPanel() {
     !!isDebugPanelVisible ? (isDebugPanelVisible = false) : (isDebugPanelVisible = true);
     if(debugPanel) debugPanel.style.display = isDebugPanelVisible ? 'block' : 'none';
+    
+    const coordPanel = document.getElementById('coord-panel');
+    if (coordPanel) {
+        if (isDebugPanelVisible) {
+            coordPanel.classList.remove('hidden-element');
+        } else {
+            coordPanel.classList.add('hidden-element');
+        }
+    }
 }
 
 // Camera Modes
@@ -224,6 +305,200 @@ document.addEventListener('keydown', (e) => {
     if (e.key === 'F3' || e.key === '`') {
         e.preventDefault();
         toggleDebugPanel();
+    }
+});
+
+// Load a default background scene for the menu
+// (Note: loadLevel3 is called at the end of the file normally, preserved original flow below)
+
+// --- SCENE EDITOR MODE & HIERARCHY ---
+export let isSceneEditor = false;
+export let isTimelinePlaying = false; // By default animations pause in Editor Mode
+let orbitControls, transformControl;
+const raycasterEditor = new THREE.Raycaster();
+const mouseEditor = new THREE.Vector2();
+
+function refreshHierarchyPanel() {
+    const list = document.getElementById('hierarchy-list');
+    if (!list) return;
+    list.innerHTML = ''; // clear
+
+    let index = 0;
+    levelGroup.children.forEach(child => {
+        // Skip purely non-visual debug elements or gigantic background objects
+        if (child.name.startsWith('debug_')) return;
+        if (child.scale.x > 300) return; // Skip big Skyboxes
+
+        let displayName = child.name || `Object_${index++}`;
+        if (!child.name) {
+            if (child.isPoints) displayName = '🎈 Particles';
+            else if (child.isLight) displayName = `💡 ${child.type}`;
+            else if (child.geometry && child.geometry.type === 'PlaneGeometry') displayName = '🟩 Terrain';
+            else if (child.userData.isInteractable) displayName = '🖐️ Interactable';
+            else displayName = `📦 Mesh (${child.type})`;
+        }
+
+        const div = document.createElement('div');
+        div.textContent = displayName;
+        div.style.cursor = 'pointer';
+        div.style.padding = '4px 8px';
+        div.style.border = '1px solid transparent';
+        div.style.borderRadius = '4px';
+        div.style.color = '#ccc';
+        div.style.transition = 'all 0.2s';
+        
+        div.addEventListener('mouseenter', () => div.style.background = 'rgba(255,255,255,0.1)');
+        div.addEventListener('mouseleave', () => {
+            if(transformControl.object !== child) div.style.background = 'transparent';
+        });
+
+        div.addEventListener('click', () => {
+            // Attach transform to the clicked element directly
+            if(child.isLight || child.isMesh || child.isPoints || child.isGroup) {
+                transformControl.attach(child);
+                
+                // Highlight item
+                Array.from(list.children).forEach(el => {
+                    el.style.background = 'transparent';
+                    el.style.borderColor = 'transparent';
+                    el.style.color = '#ccc';
+                });
+                div.style.background = 'rgba(100, 200, 255, 0.2)';
+                div.style.borderColor = '#66ccff';
+                div.style.color = '#fff';
+            }
+        });
+
+        list.appendChild(div);
+    });
+}
+
+document.getElementById('btn-refresh-hierarchy')?.addEventListener('click', refreshHierarchyPanel);
+
+// Initialize Edit Controls
+orbitControls = new OrbitControls(camera, renderer.domElement);
+orbitControls.enabled = false;
+
+transformControl = new TransformControls(camera, renderer.domElement);
+transformControl.addEventListener('dragging-changed', function (event) {
+    orbitControls.enabled = !event.value;
+});
+scene.add(transformControl);
+
+document.getElementById('btn-scene-editor')?.addEventListener('click', () => {
+    isSceneEditor = !isSceneEditor;
+    const btn = document.getElementById('btn-scene-editor');
+    const hierarchyPanel = document.getElementById('hierarchy-panel');
+    const btnPlayPanel = document.getElementById('btn-editor-play');
+    const fxPanel = document.getElementById('fx-panel');
+    const appContainer = document.getElementById('app');
+    
+    if (isSceneEditor) {
+        controls.unlock();
+        orbitControls.enabled = true;
+        btn.style.background = 'rgba(200, 0, 200, 1)';
+        btn.innerHTML = '<span>[⚒️] EXIT SCENE EDIT (T/R/S)</span>';
+        
+        // IDE Layout Shift (Shrink viewport & show side panels)
+        // Using explicit pixel math to guarantee no CSS calc() issues
+        const newW = window.innerWidth - 480;
+        const newH = window.innerHeight - 100;
+        appContainer.style.width = newW + 'px';
+        appContainer.style.left = '240px';
+        appContainer.style.top = '100px';
+        appContainer.style.height = newH + 'px';
+        
+        triggerResize();
+        
+        if (hierarchyPanel) {
+            hierarchyPanel.classList.remove('hidden-element');
+            refreshHierarchyPanel();
+        }
+        if (btnPlayPanel) {
+            btnPlayPanel.style.display = 'block';
+            isTimelinePlaying = false;
+            btnPlayPanel.innerHTML = '<span>▶️ 播放場景動畫 (Paused)</span>';
+        }
+        if (fxPanel) fxPanel.classList.remove('hidden-element');
+        
+        const coordPanel = document.getElementById('coord-panel');
+        if(coordPanel) coordPanel.classList.remove('hidden-element');
+    } else {
+        orbitControls.enabled = false;
+        transformControl.detach();
+        btn.style.background = 'rgba(120, 40, 200, 0.8)';
+        btn.innerHTML = '<span>[⚒️] SCENE EDITOR</span>';
+        
+        // Restore standard layout
+        appContainer.style.width = '100vw';
+        appContainer.style.left = '0px';
+        appContainer.style.top = '0px';
+        appContainer.style.height = '100vh';
+        
+        triggerResize();
+        
+        if (hierarchyPanel) hierarchyPanel.classList.add('hidden-element');
+        if (btnPlayPanel) btnPlayPanel.style.display = 'none';
+        
+        if (document.getElementById('game-ui')?.style.display !== 'none') {
+            controls.lock(); // Only lock if game is actually running
+        }
+    }
+});
+
+document.getElementById('btn-editor-play')?.addEventListener('click', (e) => {
+    isTimelinePlaying = !isTimelinePlaying;
+    if (isTimelinePlaying) {
+        e.currentTarget.style.background = 'rgba(50, 200, 50, 0.8)';
+        e.currentTarget.innerHTML = '<span>⏸ 暫停場景動畫 (Playing)</span>';
+    } else {
+        e.currentTarget.style.background = 'rgba(50, 50, 50, 0.8)';
+        e.currentTarget.innerHTML = '<span>▶️ 播放場景動畫 (Paused)</span>';
+    }
+});
+
+// Raycasting for generic scene manipulations
+renderer.domElement.addEventListener('pointerdown', (event) => {
+    if (!isSceneEditor) return;
+    if (transformControl.dragging) return;
+    
+    // Normalize mouse coords using exact bounding client rect bounds since we dynamically shrink and shift the canvas
+    const rect = renderer.domElement.getBoundingClientRect();
+    mouseEditor.x = ( (event.clientX - rect.left) / rect.width ) * 2 - 1;
+    mouseEditor.y = -( (event.clientY - rect.top) / rect.height ) * 2 + 1;
+
+    raycasterEditor.setFromCamera(mouseEditor, camera);
+    // Intersect only levelGroup props
+    const intersects = raycasterEditor.intersectObjects(levelGroup.children, true);
+
+    if (intersects.length > 0) {
+        let object = intersects[0].object;
+        // Ignore visual bounding boxes and lines
+        if (object.name.startsWith('debug_')) object = object.parent;
+        
+        // Traverse up to find the root object placed inside levelGroup (e.g. for complete GLTF models like statues)
+        let rootTarget = object;
+        while (rootTarget && rootTarget.parent && rootTarget.parent !== levelGroup && rootTarget.parent.type !== 'Scene') {
+            rootTarget = rootTarget.parent;
+        }
+
+        // Attach transform but bypass gigantic background objects and pure planes if they get in the way too much
+        if (rootTarget && rootTarget.scale.x < 300) {
+            transformControl.attach(rootTarget);
+        } else {
+            transformControl.detach();
+        }
+    } else {
+        transformControl.detach();
+    }
+});
+
+window.addEventListener('keydown', (e) => {
+    if (!isSceneEditor) return;
+    switch(e.key.toLowerCase()) {
+        case 't': transformControl.setMode('translate'); break;
+        case 'r': transformControl.setMode('rotate'); break;
+        case 's': transformControl.setMode('scale'); break;
     }
 });
 
@@ -314,10 +589,15 @@ const moveSpeed = 4.5;
 const telekDistance = 5;
 
 renderer.setAnimationLoop(() => {
-    const dt = Math.min(clock.getDelta(), 0.1);
+    const rawDt = clock.getDelta();
+    const dt = Math.min(rawDt, 0.1);
+    
+    // Pause physics/animations if editor is open and playback is not toggled
+    const isPlaybackZero = isSceneEditor && !isTimelinePlaying;
+    const playDt = isPlaybackZero ? 0 : dt;
     
     if (catMixer) {
-        catMixer.update(dt);
+        catMixer.update(playDt);
     }
     
     // Debug Panel Updates
@@ -346,6 +626,19 @@ renderer.setAnimationLoop(() => {
             else if (controls.isLocked) currentStateInfo = "Playing (FPS)";
             else if (isNoclip) currentStateInfo = "Editor/Noclip";
             if(dbgState) dbgState.textContent = currentStateInfo;
+        }
+
+        // Live Coordinate Panel Updates
+        const coordPanel = document.getElementById('coord-panel');
+        if (coordPanel && !coordPanel.classList.contains('hidden-element')) {
+            const cx = document.getElementById('coord-x');
+            const cy = document.getElementById('coord-y');
+            const cz = document.getElementById('coord-z');
+            if (cx && cy && cz) {
+                cx.textContent = camera.position.x.toFixed(2);
+                cy.textContent = camera.position.y.toFixed(2);
+                cz.textContent = camera.position.z.toFixed(2);
+            }
         }
     }
 
@@ -405,26 +698,28 @@ renderer.setAnimationLoop(() => {
              camera.rotation.y += dt * 0.1; 
         }
 
-        if (controls.isLocked || (isNoclip && document.getElementById('editor-ui').style.display === 'block')) {
-            if (keys.w) controls.moveForward(moveSpeed * dt);
-            if (keys.s) controls.moveForward(-moveSpeed * dt);
-            if (keys.a) controls.moveRight(-moveSpeed * dt);
-            if (keys.d) controls.moveRight(moveSpeed * dt);
+        if (controls.isLocked || isSceneEditor || (isNoclip && document.getElementById('editor-ui').style.display === 'block')) {
+            if (!isSceneEditor) {
+                // Conventional locked FPS / Noclip movement
+                if (keys.w) controls.moveForward(moveSpeed * dt);
+                if (keys.s) controls.moveForward(-moveSpeed * dt);
+                if (keys.a) controls.moveRight(-moveSpeed * dt);
+                if (keys.d) controls.moveRight(moveSpeed * dt);
+            }
             
             if (isNoclip) {
                 if (keys.q) camera.position.y += moveSpeed * dt;
                 if (keys.e) camera.position.y -= moveSpeed * dt;
-                // Pin playerBody to camera so it doesn't fall away
                 playerBody.position.copy(camera.position);
                 playerBody.velocity.set(0, 0, 0);
-            } else {
+            } else if (!isSceneEditor) {
                 playerBody.position.set(camera.position.x, levelState.playerBaseY || 0.5, camera.position.z);
             }
             
-            const bob = (isNoclip) ? 0 : Math.sin(clock.elapsedTime * 8) * 0.04;
-            const baseBob = (keys.w||keys.s||keys.a||keys.d) ? bob : 0;
+            const bob = (isNoclip || isSceneEditor) ? 0 : Math.sin(clock.elapsedTime * 8) * 0.04;
+            const baseBob = (!isSceneEditor && (keys.w||keys.s||keys.a||keys.d)) ? bob : 0;
             
-            if(!constraint) {
+            if(!constraint && !isSceneEditor) {
                 const yaw = camera.rotation.y;
                 const floorY = (isNoclip) ? camera.position.y - 0.5 : (levelState.playerBaseY || 0.5) - 0.5; 
                 
@@ -492,15 +787,23 @@ renderer.setAnimationLoop(() => {
         draggedBody.velocity.scale(0.9, draggedBody.velocity);
     }
     
-    world.step(1/60, dt, 3);
-    
-    for (const obj of levelState.rigidBodies) {
-        obj.mesh.position.copy(obj.body.position);
-        obj.mesh.quaternion.copy(obj.body.quaternion);
+    if (!isPlaybackZero) {
+        world.step(1/60, dt, 3);
+        
+        for (const obj of levelState.rigidBodies) {
+            obj.mesh.position.copy(obj.body.position);
+            obj.mesh.quaternion.copy(obj.body.quaternion);
+        }
+    } else {
+        // Sync backwards so if dragged in Edit mode, physics body moves too
+        for (const obj of levelState.rigidBodies) {
+            obj.body.position.copy(obj.mesh.position);
+            obj.body.quaternion.copy(obj.mesh.quaternion);
+        }
     }
     
     for (const updateFn of levelState.updatables) {
-        updateFn(dt);
+        updateFn(playDt);
     }
     
     if (renderer.xr.isPresenting) {
