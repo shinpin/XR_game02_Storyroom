@@ -7,6 +7,7 @@ import { FilmPass } from 'three/examples/jsm/postprocessing/FilmPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { RGBShiftShader } from 'three/examples/jsm/shaders/RGBShiftShader.js';
 import { ColorCorrectionShader } from 'three/examples/jsm/shaders/ColorCorrectionShader.js';
+import { VignetteShader } from 'three/examples/jsm/shaders/VignetteShader.js';
 import { AfterimagePass } from 'three/examples/jsm/postprocessing/AfterimagePass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { VRButton } from 'three/examples/jsm/webxr/VRButton.js';
@@ -26,6 +27,7 @@ export let filmPass;
 export let rgbShiftPass;
 export let colorCorrectionPass;
 export let afterimagePass;
+export let vignettePass;
 export function initCore() {
     scene.background = new THREE.Color(0x020205);
     scene.fog = new THREE.FogExp2(0x020205, 0.03);
@@ -68,6 +70,12 @@ export function initCore() {
     colorCorrectionPass = new ShaderPass(ColorCorrectionShader);
     colorCorrectionPass.enabled = false;
     composer.addPass(colorCorrectionPass);
+
+    // 1.5 Vignette
+    vignettePass = new ShaderPass(VignetteShader);
+    vignettePass.uniforms['darkness'].value = 0.0; // 0 means off
+    vignettePass.enabled = true; // Always on, but invisible if darkness=0
+    composer.addPass(vignettePass);
 
     // 2. Motion Blur (Afterimage)
     afterimagePass = new AfterimagePass(0.85); // 0.85 dampening

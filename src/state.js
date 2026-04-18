@@ -9,7 +9,8 @@ export let levelState = {
     doorTriggerBody: null,
     nextLevelParams: null,
     playerBaseY: 0.5,
-    customIntro: null
+    customIntro: null,
+    currentLevel: 1
 };
 
 export const keys = { w: false, a: false, s: false, d: false, q: false, e: false };
@@ -25,7 +26,8 @@ export function resetLevelState() {
         doorTriggerBody: null,
         nextLevelParams: null,
         playerBaseY: 0.5,
-        customIntro: null
+        customIntro: null,
+        currentLevel: levelState.currentLevel // preserve the level id
     };
 }
 

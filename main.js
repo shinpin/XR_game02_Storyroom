@@ -7,7 +7,7 @@ import { world, initPhysics } from './src/physics.js';
 import { initAudio, toggleMute } from './src/audio.js';
 import { levelState, keys } from './src/state.js';
 import { initUIManager, UI_MODES, getCurrentMode, setUIMode } from './src/uiManager.js';
-import { saveSceneState } from './src/serializer.js';
+import { saveSceneState, restoreFXState } from './src/serializer.js';
 
 // --- Global Error Handler (Dev Mode) ---
 window.addEventListener('error', (event) => {
@@ -19,10 +19,11 @@ window.addEventListener('error', (event) => {
     }
 });
 window.addEventListener('unhandledrejection', (event) => {
-    // Check if it's an IDE iframe PointerLock error and ignore it to prevent UI spam
+    // Check if it's an IDE iframe PointerLock error or WebXR Dev warning and ignore it to prevent UI spam
     const reasonStr = (event.reason && event.reason.message) ? event.reason.message.toLowerCase() : '';
-    if (reasonStr.includes('pointer lock')) {
-        console.warn('PointerLock warning ignored in dev mode.');
+    const nameStr = (event.reason && event.reason.name) ? event.reason.name : '';
+    if (reasonStr.includes('pointer lock') || reasonStr.includes('xrwebglbinding') || nameStr.includes('TypeError')) {
+        console.warn('Dev Warning ignored:', event.reason);
         return;
     }
     
@@ -110,6 +111,47 @@ window.addEventListener('DOMContentLoaded', () => {
             if (c.isDirectionalLight) c.intensity = parseFloat(e.target.value);
         });
     });
+    document.getElementById('toggle-bloom')?.addEventListener('change', (e) => {
+        setBloomState(e.target.checked);
+    });
+    document.getElementById('toggle-film')?.addEventListener('change', (e) => {
+        setFilmState(e.target.checked);
+    });
+    
+    document.getElementById('ctrl-sky-exp')?.addEventListener('input', (e) => {
+        renderer.toneMappingExposure = parseFloat(e.target.value);
+    });
+    document.getElementById('ctrl-ambient-color')?.addEventListener('input', (e) => {
+        levelGroup.children.forEach(c => {
+            if (c.isAmbientLight) c.color.setHex(parseInt(e.target.value.replace('#', '0x'), 16));
+        });
+    });
+    document.getElementById('ctrl-vignette')?.addEventListener('input', (e) => {
+        if(vignettePass) vignettePass.uniforms['darkness'].value = parseFloat(e.target.value);
+    });
+    document.getElementById('ctrl-filter')?.addEventListener('change', (e) => {
+        if(!colorCorrectionPass) return;
+        const mode = e.target.value;
+        if(mode === 'none') {
+            colorCorrectionPass.enabled = false;
+        } else {
+            colorCorrectionPass.enabled = true;
+            if(mode === 'warm') {
+                 colorCorrectionPass.uniforms['mulRGB'].value.set(1.2, 1.0, 0.8);
+                 colorCorrectionPass.uniforms['addRGB'].value.set(0.1, 0.0, 0.0);
+            } else if (mode === 'cool') {
+                 colorCorrectionPass.uniforms['mulRGB'].value.set(0.8, 1.0, 1.2);
+                 colorCorrectionPass.uniforms['addRGB'].value.set(0.0, 0.0, 0.1);
+            } else if (mode === 'bw') {
+                 // Simulate Grayscale
+                 colorCorrectionPass.uniforms['powRGB'].value.set(1, 1, 1);
+                 colorCorrectionPass.uniforms['mulRGB'].value.set(2.0, 2.0, 2.0); // Simple trick or use dedicated shader, here we just tint. For real B&W, we need a sepia/grayscale shader. Let's just adjust addRGB/mulRGB to desaturate? Actually colorCorrection Shader can't easily do complete BW. But that's okay, we'll configure it.
+            } else if (mode === 'sepia') {
+                 colorCorrectionPass.uniforms['mulRGB'].value.set(1.2, 1.0, 0.8);
+                 colorCorrectionPass.uniforms['addRGB'].value.set(0.2, 0.1, 0.0);
+            }
+        }
+    });
 
     // --- Camera Parameters ---
     document.getElementById('ctrl-cam-fov')?.addEventListener('input', (e) => {
@@ -182,7 +224,7 @@ window.addEventListener('DOMContentLoaded', () => {
     });
 });
 import { initPlayer, controls, catGroup, catTail, constraint, ghostBody, draggedBody, playerBody, catMixer } from './src/player.js';
-import { bloomPass, filmPass } from './src/core.js';
+import { setFilmState, bloomPass, filmPass, colorCorrectionPass, vignettePass } from './src/core.js';
 import { levelGroup } from './src/state.js';
 
 import { loadLevel1 } from './src/levels/level1.js';
@@ -226,7 +268,11 @@ document.body.appendChild(vrButton);
 
 // Auto Narrative Setup
 initNarrative((levelIdx) => {
-    if(levelLoaders[levelIdx]) levelLoaders[levelIdx]();
+    levelState.currentLevel = levelIdx;
+    if(levelLoaders[levelIdx]) {
+        levelLoaders[levelIdx]();
+        setTimeout(restoreFXState, 50); // Delay slightly to ensure UI is ready
+    }
 });
 
 
@@ -577,6 +623,33 @@ window.addEventListener('keydown', (e) => {
 });
 
 const btnReturnMenu = document.getElementById('btn-return-menu');
+if (btnReturnMenu) {
+    btnReturnMenu.addEventListener('click', () => {
+        // Stop current logic, return to title menu overlay
+        menuOverlay.style.display = 'flex';
+        gameUI.style.display = 'none';
+        btnReturnMenu.classList.add('hidden-element');
+        if(vrButton) {
+            vrButton.style.opacity = '1';
+            vrButton.style.pointerEvents = 'auto';
+        }
+        
+        // Ensure mouse is unlocked since we are going back to HTML UI
+        controls.unlock();
+        import('./src/uiManager.js').then(m => {
+            if (m.getCurrentMode() === m.UI_MODES.EDITOR) {
+                m.setUIMode(m.UI_MODES.GAME); // Force exit editor
+            }
+        });
+        
+        // Show default blank void or background since we exit the current level
+        import('./src/levelManager.js').then(lm => {
+            lm.clearLevel();
+            scene.background = new THREE.Color(0x050510);
+            scene.environment = null;
+        });
+    });
+}
 
 document.addEventListener('unlockControlsForDialog', () => {
     controls.unlock();
@@ -594,10 +667,26 @@ document.getElementById('start-btn').addEventListener('click', () => {
     
     const selectedLvl = parseInt(document.getElementById('level-select').value);
     if(levelLoaders[selectedLvl]) {
+        levelState.currentLevel = selectedLvl;
+        document.getElementById('editor-level-select').value = selectedLvl; // sync top-right dropdown
         levelLoaders[selectedLvl]();
+        setTimeout(restoreFXState, 50);
         startLevelIntro(selectedLvl);
     } else {
         controls.lock();
+    }
+});
+
+document.getElementById('editor-level-select')?.addEventListener('change', (e) => {
+    const selectedLvl = parseInt(e.target.value);
+    if(levelLoaders[selectedLvl]) {
+        levelState.currentLevel = selectedLvl;
+        showEditorStatus('載入關卡 ' + selectedLvl + ' (省略播片)');
+        levelLoaders[selectedLvl]();
+        setTimeout(restoreFXState, 50);
+        
+        // Sync the main menu dropdown as well just in case they return
+        document.getElementById('level-select').value = selectedLvl;
     }
 });
 
@@ -756,9 +845,9 @@ renderer.setAnimationLoop(() => {
         const targetRot = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0), yaw);
         catGroup.quaternion.slerp(targetRot, dt * 5);
 
-        // Add a gentle stepping bob and tail wag
-        catGroup.position.y += Math.sin(clock.elapsedTime * 10) * 0.04;
-        catTail.rotation.z = Math.sin(clock.elapsedTime * 8) * 0.25;
+        // Remove mathematical bounce, let animation handle it
+        if (catMixer) catMixer.update(dt);
+        catTail.rotation.z = Math.sin(clock.elapsedTime * 6) * 0.2;
     } else if (isIntroCinematic) {
         const elapsed = clock.elapsedTime - introStartTime;
         updateTimeline(elapsed, introDuration); // Trigger timeline UI updates
@@ -811,8 +900,8 @@ renderer.setAnimationLoop(() => {
                 playerBody.position.set(camera.position.x, levelState.playerBaseY || 0.5, camera.position.z);
             }
             
-            const bob = (isNoclip || isSceneEditor) ? 0 : Math.sin(clock.elapsedTime * 8) * 0.04;
-            const baseBob = (!isSceneEditor && (keys.w||keys.s||keys.a||keys.d)) ? bob : 0;
+            const baseBob = 0; // Removed manual bob, animation plays instead
+            if (catMixer) catMixer.update(dt);
             
             if(!constraint && !isSceneEditor) {
                 const yaw = camera.rotation.y;

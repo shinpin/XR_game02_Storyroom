@@ -198,8 +198,8 @@ export function loadLevel3() {
     // Chessboard floor - made glossy and reflective
     const darkTileMat = new THREE.MeshStandardMaterial({ color: 0x020202, roughness: 0.1, metalness: 0.8 });
     const lightTileMat = new THREE.MeshStandardMaterial({ color: 0x777788, roughness: 0.15, metalness: 0.6 });
-    for(let i=-2; i<=2; i++) {
-        for(let j=-3; j<=3; j++) {
+    for(let i=-10; i<=10; i++) {
+        for(let j=-10; j<=15; j++) {
             const isD = (i+j)%2 === 0;
             const tile = new THREE.Mesh(new THREE.PlaneGeometry(tileS, tileS), isD ? darkTileMat : lightTileMat);
             tile.rotation.x = -Math.PI/2;

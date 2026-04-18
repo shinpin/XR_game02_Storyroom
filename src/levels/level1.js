@@ -173,5 +173,5 @@ export function loadLevel1() {
         rainGeo.attributes.position.needsUpdate = true;
     });
 
-    createLevelDoor(0, -2, -20, 2); 
+    createLevelDoor(0, -0.5, -20, 2); 
 }

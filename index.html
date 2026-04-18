@@ -56,6 +56,13 @@
     <!-- Post-Processing Effects Menu (Top Right) -->
     <div id="top-right-container" style="position:fixed; top:15px; right:20px; z-index:9100; display:flex; flex-direction:column; align-items:flex-end; pointer-events:none;">
       <div style="display:flex; gap:10px; pointer-events:auto; align-items:center;">
+        <select id="editor-level-select" class="hidden-element" style="background:rgba(20,30,50,0.8); color:#66ccff; border:1px solid #00aaff; border-radius:6px; padding:6px; cursor:pointer; font-family:'Inter', sans-serif;">
+            <option value="1">L1: 水燈大樹</option>
+            <option value="2">L2: 螢火時盤</option>
+            <option value="3">L3: 古墓棋盤</option>
+            <option value="4">L4: 虛空石階</option>
+            <option value="5">L5: 門神牌局</option>
+        </select>
         <button id="btn-toggle-audio" class="audio-toggle-btn" style="position:static;" title="Toggle Sound">🔊</button>
         <button id="btn-toggle-fx" class="glow-btn" style="min-width:auto; padding:8px 15px; font-size:1rem; border-radius:8px;">✨ FX</button>
       </div>
@@ -72,12 +79,30 @@
           <input type="checkbox" id="toggle-film" style="cursor:pointer;">
         </div>
 
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <label style="font-size:0.85rem;" for="ctrl-vignette">Vignette (暗角)</label>
+          <input type="range" id="ctrl-vignette" min="0" max="2" step="0.1" value="0.0" style="width:80px;">
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:5px;">
+          <label style="font-size:0.85rem;" for="ctrl-filter">Filter (濾鏡)</label>
+          <select id="ctrl-filter" style="width:80px; background:rgba(0,0,0,0.5); color:#fff; border:1px solid #555;">
+            <option value="none">Normal</option>
+            <option value="warm">Warm (暖)</option>
+            <option value="cool">Cool (冷)</option>
+            <option value="bw">B&W (黑白)</option>
+            <option value="sepia">Sepia (懷舊)</option>
+          </select>
+        </div>
+
         <h4 style="margin:15px 0 10px 0; color:#ffcc00; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:5px;">Environment & Lighting</h4>
         <div style="display:flex; flex-direction:column; gap:5px;">
           <label style="font-size:0.85rem; display:flex; justify-content:space-between;">Wireframe: <input type="checkbox" id="ctrl-wireframe"></label>
+          <label style="font-size:0.85rem; display:flex; justify-content:space-between;">Sky Exp.: <input type="range" id="ctrl-sky-exp" min="0" max="2" step="0.1" value="1.0" style="width:80px;"></label>
           <label style="font-size:0.85rem; display:flex; justify-content:space-between;">Fog Dens: <input type="range" id="ctrl-fog-density" min="0" max="0.1" step="0.001" value="0.015" style="width:80px;"></label>
           <label style="font-size:0.85rem; display:flex; justify-content:space-between;">Fog Color: <input type="color" id="ctrl-fog-color" value="#020205"></label>
-          <label style="font-size:0.85rem; display:flex; justify-content:space-between;">Amb Light: <input type="range" id="ctrl-ambient-int" min="0" max="5" step="0.1" value="0.5" style="width:80px;"></label>
+          <label style="font-size:0.85rem; display:flex; justify-content:space-between;">Amb Bright: <input type="range" id="ctrl-ambient-int" min="0" max="5" step="0.1" value="0.5" style="width:80px;"></label>
+          <label style="font-size:0.85rem; display:flex; justify-content:space-between;">Amb Color: <input type="color" id="ctrl-ambient-color" value="#ffffff"></label>
           <label style="font-size:0.85rem; display:flex; justify-content:space-between;">Main Light: <input type="range" id="ctrl-main-int" min="0" max="10" step="0.1" value="3" style="width:80px;"></label>
         </div>
 
