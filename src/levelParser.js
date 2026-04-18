@@ -107,6 +107,19 @@ export function parseLevel(config) {
             if (lightDef.type === 'Directional') {
                 light = new THREE.DirectionalLight(lightDef.color, lightDef.intensity);
                 if (lightDef.position) light.position.fromArray(lightDef.position);
+                if (lightDef.castShadow !== false) {
+                    light.castShadow = true;
+                    light.shadow.mapSize.width = 2048;
+                    light.shadow.mapSize.height = 2048;
+                    light.shadow.camera.near = 0.5;
+                    light.shadow.camera.far = 150;
+                    const d = 40; // Wide enough to cover the playable area
+                    light.shadow.camera.left = -d;
+                    light.shadow.camera.right = d;
+                    light.shadow.camera.top = d;
+                    light.shadow.camera.bottom = -d;
+                    light.shadow.bias = -0.0005; // Less acne
+                }
                 levelGroup.add(light);
             } else if (lightDef.type === 'Ambient') {
                 light = new THREE.AmbientLight(lightDef.color, lightDef.intensity);
@@ -141,6 +154,12 @@ export function parseLevel(config) {
         afterimagePass.enabled = false;
         afterimagePass.uniforms['damp'].value = 0.85;
     }
+    
+    import('./core.js').then((core) => {
+        if (core.ssaoPass) {
+            core.ssaoPass.enabled = false;
+        }
+    });
 
     // Apply level specific post-processing
     if (config.postprocessing) {
@@ -171,6 +190,17 @@ export function parseLevel(config) {
         if (pp.motionBlur !== undefined && afterimagePass) {
             afterimagePass.enabled = pp.motionBlur.enabled;
             if (pp.motionBlur.damp !== undefined) afterimagePass.uniforms['damp'].value = pp.motionBlur.damp;
+        }
+
+        if (pp.ao !== undefined) {
+             import('./core.js').then((core) => {
+                 if (core.ssaoPass) {
+                     core.ssaoPass.enabled = pp.ao.enabled;
+                     if (pp.ao.kernelRadius !== undefined) core.ssaoPass.kernelRadius = pp.ao.kernelRadius;
+                     if (pp.ao.minDistance !== undefined) core.ssaoPass.minDistance = pp.ao.minDistance;
+                     if (pp.ao.maxDistance !== undefined) core.ssaoPass.maxDistance = pp.ao.maxDistance;
+                 }
+             });
         }
     }
 

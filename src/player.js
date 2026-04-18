@@ -101,8 +101,8 @@ function setupCatAvatar() {
     gltfLoader.load('/FOX_ANI.glb', (gltf) => {
         const foxModel = gltf.scene;
         
-        // 放大狐狸模型 (原本為 3.5 導致在場景中太小)
-        foxModel.scale.set(50.0, 50.0, 50.0);
+        // 放大狐狸模型 (原本為 50.0) -> 放大兩倍為 100.0
+        foxModel.scale.set(100.0, 100.0, 100.0);
         foxModel.position.set(0, 0, 0);
         foxModel.rotation.y = Math.PI + (10 * Math.PI / 180); // Face away from the camera, rotated 10 degrees left
         

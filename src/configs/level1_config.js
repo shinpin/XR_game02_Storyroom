@@ -12,7 +12,7 @@ export const level1Config = {
         bgm: '/BGM_01.mp3'
     },
     player: {
-        baseY: -2.5
+        baseY: -12.0
     },
     environment: {
         skybox: '/BG360_Treewater.jpg',
@@ -29,7 +29,8 @@ export const level1Config = {
         film: { enabled: true, intensity: 0.25 }, // Cinematic grain
         chromaticAberration: { enabled: true, amount: 0.001 },
         colorAdjustments: { enabled: false },
-        motionBlur: { enabled: false }
+        motionBlur: { enabled: false },
+        ao: { enabled: true, kernelRadius: 16, minDistance: 0.005, maxDistance: 0.1 }
     },
     camera: {
         fov: 75,

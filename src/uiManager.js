@@ -56,7 +56,7 @@ export function setUIMode(mode) {
     console.log(`[UIManager] 進入模式: #${mode}`);
 
     // 定義三大 Layer 所屬的 DOM 元素 (以 ID 陣列代表)
-    const editorElements = ['hierarchy-panel', 'fx-panel', 'coord-panel', 'btn-editor-play', 'editor-status-bar', 'editor-level-select'];
+    const editorElements = ['hierarchy-panel', 'fx-panel', 'inspector-panel', 'coord-panel', 'btn-editor-play', 'editor-status-bar', 'editor-level-select'];
     const gmElements = ['xr-debug-panel'];
     
     // 根據模式控制元素可見性

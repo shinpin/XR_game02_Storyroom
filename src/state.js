@@ -53,7 +53,7 @@ export function setIntroCinematic(v) {
 export function showBigTitle(text, callback) {
     const titleEl = document.getElementById('big-level-title');
     if (!titleEl) return;
-    titleEl.innerText = text;
+    titleEl.innerHTML = text; // Changed to innerHTML to support styled markup for objectives
     titleEl.classList.remove('hidden-element');
     
     // Fade In

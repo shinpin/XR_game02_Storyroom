@@ -73,6 +73,8 @@ export function createLevelDoor(x, y, z, nextLevelId) {
         // Enlarge by 6 times (base was 1.5, so 1.5 * 6 = 9.0)
         doorModel.scale.set(9.0, 9.0, 9.0);
         doorModel.position.set(x, y, z);
+        doorModel.name = 'level_door_target'; // Set unique name for Saving
+        doorModel.userData.editable = true;   // Allow editing in Inspector
         
         doorModel.traverse((child) => {
             if (child.isMesh) {

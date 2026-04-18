@@ -86,9 +86,9 @@ body, html {
 /* --- Navigation Map --- */
 #nav-map {
   position: absolute;
-  top: 30px;
+  top: 10px; /* Moved up */
   left: 30px;
-  background: rgba(10, 15, 25, 0.4);
+  background: rgba(10, 15, 25, 0.55); /* Increased concentration by 10%+ */
   -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
   border: 1px solid rgba(100, 200, 255, 0.15);
@@ -922,3 +922,11 @@ body, html {
   box-shadow: 0 0 15px rgba(100, 200, 255, 0.5);
 }
 
+/* --- WebXR VR Button Override --- */
+#VRButton {
+  left: 20px !important;
+  right: auto !important;
+  bottom: 20px !important;
+  margin: 0 !important;
+  transform: none !important;
+}

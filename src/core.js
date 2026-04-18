@@ -10,6 +10,7 @@ import { ColorCorrectionShader } from 'three/examples/jsm/shaders/ColorCorrectio
 import { VignetteShader } from 'three/examples/jsm/shaders/VignetteShader.js';
 import { AfterimagePass } from 'three/examples/jsm/postprocessing/AfterimagePass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
+import { SSAOPass } from 'three/examples/jsm/postprocessing/SSAOPass.js';
 import { VRButton } from 'three/examples/jsm/webxr/VRButton.js';
 export const scene = new THREE.Scene();
 export const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -28,6 +29,7 @@ export let rgbShiftPass;
 export let colorCorrectionPass;
 export let afterimagePass;
 export let vignettePass;
+export let ssaoPass;
 export function initCore() {
     scene.background = new THREE.Color(0x020205);
     scene.fog = new THREE.FogExp2(0x020205, 0.03);
@@ -64,39 +66,50 @@ export function initCore() {
     const outputPass = new OutputPass();
 
     composer = new EffectComposer(renderer);
+    // 1. Render Scene
     composer.addPass(renderScene);
 
-    // 1. Color Correction
+    // 1.5. Screen Space Ambient Occlusion (SSAO)
+    ssaoPass = new SSAOPass(scene, camera, w, h);
+    ssaoPass.kernelRadius = 16;       
+    ssaoPass.minDistance = 0.005;
+    ssaoPass.maxDistance = 0.1;
+    ssaoPass.enabled = false; // Default off, toggle per level
+    composer.addPass(ssaoPass);
+
+    // 2. Motion Blur (Afterimage)
+    afterimagePass = new AfterimagePass(0.85); 
+    afterimagePass.enabled = false;
+    composer.addPass(afterimagePass);
+
+    // 3. Bloom (Must be in Linear space, BEFORE OutputPass)
+    composer.addPass(bloomPass);
+
+    // 4. Color Correction (Linear space)
     colorCorrectionPass = new ShaderPass(ColorCorrectionShader);
     colorCorrectionPass.enabled = false;
     composer.addPass(colorCorrectionPass);
 
-    // 1.5 Vignette
-    vignettePass = new ShaderPass(VignetteShader);
-    vignettePass.uniforms['darkness'].value = 0.0; // 0 means off
-    vignettePass.enabled = true; // Always on, but invisible if darkness=0
-    composer.addPass(vignettePass);
+    // --- COLOR SPACE CONVERSION ---
+    // ToneMapping and Linear to sRGB conversion
+    composer.addPass(outputPass);
 
-    // 2. Motion Blur (Afterimage)
-    afterimagePass = new AfterimagePass(0.85); // 0.85 dampening
-    afterimagePass.enabled = false;
-    composer.addPass(afterimagePass);
-
-    // 3. Bloom
-    composer.addPass(bloomPass);
-
-    // 4. Chromatic Aberration (RGB Shift)
+    // 5. Chromatic Aberration (RGB Shift) - safe on sRGB
     rgbShiftPass = new ShaderPass(RGBShiftShader);
     rgbShiftPass.uniforms['amount'].value = 0.0015;
     rgbShiftPass.enabled = false;
     composer.addPass(rgbShiftPass);
 
-    // 5. Film Grain
-    filmPass = new FilmPass(0.35, false); // intensity, grayscale
-    filmPass.enabled = false; // Default off
-    composer.addPass(filmPass);
+    // 6. Vignette - strictly 2D overlay on sRGB to prevent hue shifting
+    vignettePass = new ShaderPass(VignetteShader);
+    vignettePass.uniforms['darkness'].value = 0.0; 
+    vignettePass.enabled = true; 
+    composer.addPass(vignettePass);
 
-    composer.addPass(outputPass);
+    // 7. Film Grain - strictly 2D overlay on sRGB
+    filmPass = new FilmPass(0.45, false); 
+    filmPass.enabled = false; 
+    composer.addPass(filmPass);
     
     window.addEventListener('resize', triggerResize);
 }

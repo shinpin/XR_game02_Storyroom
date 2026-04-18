@@ -137,18 +137,18 @@ window.addEventListener('DOMContentLoaded', () => {
         } else {
             colorCorrectionPass.enabled = true;
             if(mode === 'warm') {
-                 colorCorrectionPass.uniforms['mulRGB'].value.set(1.2, 1.0, 0.8);
-                 colorCorrectionPass.uniforms['addRGB'].value.set(0.1, 0.0, 0.0);
+                 colorCorrectionPass.uniforms['mulRGB'].value.set(1.1, 1.05, 0.9);
+                 colorCorrectionPass.uniforms['addRGB'].value.set(0.05, 0.02, 0.0);
             } else if (mode === 'cool') {
-                 colorCorrectionPass.uniforms['mulRGB'].value.set(0.8, 1.0, 1.2);
-                 colorCorrectionPass.uniforms['addRGB'].value.set(0.0, 0.0, 0.1);
+                 colorCorrectionPass.uniforms['mulRGB'].value.set(0.9, 1.05, 1.1);
+                 colorCorrectionPass.uniforms['addRGB'].value.set(0.0, 0.02, 0.05);
             } else if (mode === 'bw') {
-                 // Simulate Grayscale
-                 colorCorrectionPass.uniforms['powRGB'].value.set(1, 1, 1);
-                 colorCorrectionPass.uniforms['mulRGB'].value.set(2.0, 2.0, 2.0); // Simple trick or use dedicated shader, here we just tint. For real B&W, we need a sepia/grayscale shader. Let's just adjust addRGB/mulRGB to desaturate? Actually colorCorrection Shader can't easily do complete BW. But that's okay, we'll configure it.
+                 colorCorrectionPass.uniforms['powRGB'].value.set(1.0, 1.0, 1.0);
+                 colorCorrectionPass.uniforms['mulRGB'].value.set(1.2, 1.2, 1.2); 
+                 colorCorrectionPass.uniforms['addRGB'].value.set(0.0, 0.0, 0.0);
             } else if (mode === 'sepia') {
-                 colorCorrectionPass.uniforms['mulRGB'].value.set(1.2, 1.0, 0.8);
-                 colorCorrectionPass.uniforms['addRGB'].value.set(0.2, 0.1, 0.0);
+                 colorCorrectionPass.uniforms['mulRGB'].value.set(1.1, 1.0, 0.85);
+                 colorCorrectionPass.uniforms['addRGB'].value.set(0.1, 0.05, 0.0);
             }
         }
     });
@@ -240,6 +240,8 @@ const levelLoaders = [null, loadLevel1, loadLevel2, loadLevel3, loadLevel4, load
 
 // Async Asset Loading Fader Manager
 let loadTimeout = null;
+let pendingLevelContext = null;
+
 THREE.DefaultLoadingManager.onStart = function ( url, itemsLoaded, itemsTotal ) {
     const fader = document.getElementById('screen-fader');
     if (fader) fader.style.opacity = '1'; // Fade to black
@@ -247,9 +249,33 @@ THREE.DefaultLoadingManager.onStart = function ( url, itemsLoaded, itemsTotal ) 
 };
 THREE.DefaultLoadingManager.onLoad = function ( ) {
     const fader = document.getElementById('screen-fader');
-    // Buffer for 800ms before fading in, giving GPU time to upload textures without stuttering
+    // Buffer for 800ms to allow textures to upload to GPU
     loadTimeout = setTimeout(() => {
-        if (fader) fader.style.opacity = '0'; // Fade out to reveal game
+        if (pendingLevelContext) {
+            import('./src/state.js').then(({ showBigTitle }) => {
+                showBigTitle(pendingLevelContext.titleContent, () => {
+                    if (fader) fader.style.opacity = '0'; // Fade out black screen (dissolve to scene)
+                    
+                    // Start camera pan simultaneously with the dissolve
+                    import('./src/state.js').then(({ setIntroCinematic, showDialog }) => {
+                        setIntroCinematic(true);
+                        if(!clock.running) clock.start();
+                        introStartTime = clock.elapsedTime;
+                        introStartRotY = camera.rotation.y;
+                        
+                        // Play subtitles while camera pans
+                        if (pendingLevelContext && pendingLevelContext.chunks) {
+                            // double check context to appease strict mode bindings
+                            showDialog(pendingLevelContext.chunks, (pendingLevelContext.duration - 4) * 1000);
+                        }
+                        
+                        pendingLevelContext = null;
+                    });
+                });
+            });
+        } else {
+            if (fader) fader.style.opacity = '0'; 
+        }
     }, 800); 
 };
 
@@ -339,31 +365,36 @@ let introDuration = 8;
 
 function startLevelIntro(idx) {
     if (isAutoMode) return;
-    setIntroCinematic(true);
-    // ensure clock is running 
-    if(!clock.running) clock.start();
-    introStartTime = clock.elapsedTime;
-    introStartRotY = camera.rotation.y;
+    
+    // We unlock controls immediately so player can't move during load/intro
     controls.unlock();
     
-    // subtitle box cinematic display
     const seq = sequences[idx - 1];
+    let titleContent = "載入中...";
     if (seq) {
         const parts = seq.text.split('\n');
-        const bigTitle = parts[0];
+        const bigTitle = parts[0].replace(/[:：]/g, ' '); 
         const rawSub = parts.slice(1).join(' ').replace(/\n/g, ' ');
         
         let chunks = rawSub.split('。').map(s=>s.trim()).filter(s=>s.length>0).map(s=>s+'。');
         chunks.push("(按空白鍵跳過演出)");
         
+        // Restore original camera panning duration based on dialogue length
         introDuration = (rawSub.length * 0.08) + (chunks.length * 2.0) + 4; 
         
-        showBigTitle(bigTitle, () => {
-            if (isIntroCinematic) showDialog(chunks, (introDuration - 4) * 1000);
-        });
-    } else {
-        introDuration = 8;
+        // Use normal CSS size for bigTitle, and just hardcode the objective text as requested. Centered and smaller.
+        titleContent = `<div style="display:flex; flex-direction:column; align-items:center; justify-content:center;">
+                            <div>${bigTitle}</div>
+                            <div style="font-size:0.36em; color:#ddd; margin-top:20px; font-weight:normal; letter-spacing:6px; opacity:0.8; text-align:center;">--- 尋找失落記憶碎片 ---</div>
+                        </div>`;
     }
+    
+    // Queue the cinematic to play AFTER assets finish loading
+    pendingLevelContext = {
+        titleContent: titleContent,
+        chunks: typeof chunks !== 'undefined' ? chunks : null,
+        duration: introDuration
+    };
 }
 
 document.addEventListener('keydown', (e) => {
@@ -392,6 +423,82 @@ export let isTimelinePlaying = false; // By default animations pause in Editor M
 let orbitControls, transformControl;
 const raycasterEditor = new THREE.Raycaster();
 const mouseEditor = new THREE.Vector2();
+let selectionWireframe = null;
+let selectionBox = null;
+
+function updateSelectionVisuals(child) {
+    // Clear old wireframe
+    if (selectionWireframe) {
+        if (selectionWireframe.parent) selectionWireframe.parent.remove(selectionWireframe);
+        selectionWireframe.geometry.dispose();
+        selectionWireframe.material.dispose();
+        selectionWireframe = null;
+    }
+    // Clear old box
+    if (selectionBox) {
+        selectionBox.visible = false;
+    }
+
+    if (child.isMesh && child.geometry) {
+        // Create exact mesh wireframe overlay
+        const geo = new THREE.WireframeGeometry(child.geometry);
+        const mat = new THREE.LineBasicMaterial({ color: 0xff00ff, depthTest: false, transparent: true, opacity: 0.5 });
+        selectionWireframe = new THREE.LineSegments(geo, mat);
+        selectionWireframe.renderOrder = 999;
+        child.add(selectionWireframe);
+    } else {
+        // Fallback for Lights / Groups etc
+        if (!selectionBox) {
+            selectionBox = new THREE.BoxHelper(child, 0xff00ff);
+            selectionBox.material.depthTest = false;
+            selectionBox.renderOrder = 999;
+            import('./src/core.js').then(m => m.scene.add(selectionBox));
+        } else {
+            selectionBox.setFromObject(child);
+            selectionBox.visible = true;
+        }
+    }
+}
+
+function updateInspectorPanel(obj, displayName) {
+    document.getElementById('inspector-name').innerText = displayName;
+    document.getElementById('insp-pos-x').value = obj.position.x.toFixed(2);
+    document.getElementById('insp-pos-y').value = obj.position.y.toFixed(2);
+    document.getElementById('insp-pos-z').value = obj.position.z.toFixed(2);
+    document.getElementById('insp-sca-x').value = obj.scale.x.toFixed(2);
+    document.getElementById('insp-sca-y').value = obj.scale.y.toFixed(2);
+    document.getElementById('insp-sca-z').value = obj.scale.z.toFixed(2);
+    document.getElementById('insp-rot-y').value = THREE.MathUtils.radToDeg(obj.rotation.y).toFixed(2);
+}
+
+function initInspectorEvents() {
+    const applyTransform = () => {
+        if(!transformControl || !transformControl.object) return;
+        const o = transformControl.object;
+        o.position.set(
+            parseFloat(document.getElementById('insp-pos-x').value) || 0,
+            parseFloat(document.getElementById('insp-pos-y').value) || 0,
+            parseFloat(document.getElementById('insp-pos-z').value) || 0
+        );
+        o.scale.set(
+            parseFloat(document.getElementById('insp-sca-x').value) || 1,
+            parseFloat(document.getElementById('insp-sca-y').value) || 1,
+            parseFloat(document.getElementById('insp-sca-z').value) || 1
+        );
+        o.rotation.y = THREE.MathUtils.degToRad(parseFloat(document.getElementById('insp-rot-y').value) || 0);
+        
+        if (selectionBox && selectionBox.visible) selectionBox.update();
+        if (o.userData.physicsBody) {
+            o.userData.physicsBody.position.copy(o.position);
+            o.userData.physicsBody.quaternion.copy(o.quaternion);
+        }
+    };
+    
+    ['insp-pos-x','insp-pos-y','insp-pos-z','insp-sca-x','insp-sca-y','insp-sca-z','insp-rot-y'].forEach(id => {
+        document.getElementById(id)?.addEventListener('change', applyTransform);
+    });
+}
+initInspectorEvents();
 
 function refreshHierarchyPanel() {
     const list = document.getElementById('hierarchy-list');
@@ -442,6 +549,9 @@ function refreshHierarchyPanel() {
                 div.style.borderColor = '#66ccff';
                 div.style.color = '#fff';
                 showEditorStatus(`選取物件: ${child.name || child.type}`);
+                
+                updateSelectionVisuals(child);
+                updateInspectorPanel(child, displayName);
             }
         });
 
@@ -487,6 +597,13 @@ orbitControls.enabled = false;
 transformControl = new TransformControls(camera, renderer.domElement);
 transformControl.addEventListener('dragging-changed', function (event) {
     orbitControls.enabled = !event.value;
+});
+transformControl.addEventListener('change', function () {
+    if (transformControl.object) {
+        if (selectionBox && selectionBox.visible) selectionBox.update();
+        let name = transformControl.object.name || transformControl.object.type;
+        updateInspectorPanel(transformControl.object, name);
+    }
 });
 scene.add(transformControl);
 
