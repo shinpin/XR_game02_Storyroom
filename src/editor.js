@@ -12,6 +12,14 @@ export let isNoclip = false;
 let timelineActive = false;
 let eventMarkersCreated = false;
 
+export function closeDirectorWindows() {
+    timelineActive = false;
+    const tUI = document.getElementById('timeline-ui');
+    const eUI = document.getElementById('editor-ui');
+    if(tUI) tUI.style.display = 'none';
+    if(eUI) eUI.style.display = 'none';
+}
+
 export function initEditor() {
     const btnDebug = document.getElementById('btn-debug');
     const editorUI = document.getElementById('editor-ui');

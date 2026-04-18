@@ -33,19 +33,24 @@
     </div>
 
     <!-- Global Top Bar (Always visible) -->
-    <div class="top-bar" style="position:fixed; top:70px; left:20px; right:20px; display:flex; justify-content:space-between; z-index:9000; pointer-events:none;">
+    <div class="top-bar" id="main-top-bar" style="position:fixed; top:40px; left:20px; right:20px; display:flex; justify-content:space-between; z-index:9000; pointer-events:none; transition: top 0.3s;">
       <div style="display:flex; gap:10px; pointer-events:auto;">
-        <div class="debug-tag clickable" id="btn-debug" style="background: rgba(40,40,40,0.8); cursor: pointer; padding: 6px 12px; border-radius: 6px; border: 1px solid #555; color: #fff; transition: background 0.2s;"><span>[D] DIRECTOR</span></div>
-        <div class="debug-tag clickable" id="btn-scene-editor" style="background: rgba(120,40,200,0.8); cursor: pointer; padding: 6px 12px; border-radius: 6px; border: 1px solid #b84dff; color: #fff; transition: background 0.2s;"><span>[⚒️] SCENE EDITOR</span></div>
+        <div class="debug-tag clickable" id="btn-scene-editor" style="background: rgba(120,40,200,0.8); cursor: pointer; padding: 6px 12px; border-radius: 6px; border: 1px solid #b84dff; color: #fff; transition: background 0.2s;"><span>[⚒️] SCENE EDITOR (F2)</span></div>
         <div class="debug-tag clickable" id="btn-editor-play" style="display:none; background: rgba(50,50,50,0.8); cursor: pointer; padding: 6px 12px; border-radius: 6px; border: 1px solid #ffcc00; color: #ffcc00; transition: background 0.2s;"><span>▶️ 動畫延遲撥放 (Paused)</span></div>
-        <div class="debug-tag clickable" id="btn-toggle-debug-ui" style="background: rgba(0, 50, 0, 0.8); cursor: pointer; padding: 6px 12px; border-radius: 6px; border: 1px solid #0f0; color: #0f0; transition: background 0.2s;"><span>[⚙️] DEBUG</span></div>
-        <div class="debug-tag clickable" id="btn-show-help" style="background: rgba(0, 100, 255, 0.8); cursor: pointer; padding: 6px 12px; border-radius: 6px; border: 1px solid #66ccff; color: #fff; transition: background 0.2s;"><span>[?] HELP (教學)</span></div>
+        <div class="debug-tag clickable" id="btn-toggle-debug-ui" style="background: rgba(0, 50, 0, 0.8); cursor: pointer; padding: 6px 12px; border-radius: 6px; border: 1px solid #0f0; color: #0f0; transition: background 0.2s;"><span>[⚙️] DEBUG (F1)</span></div>
         <div class="debug-tag clickable hidden-element" id="btn-return-menu" style="background: rgba(255, 50, 50, 0.8); cursor: pointer; padding: 6px 12px; border-radius: 6px; border: 1px solid #ff6666; color: #fff; transition: background 0.2s;"><span>⮌ 返回 (RETURN)</span></div>
       </div>
       <div class="version-tag" style="background: rgba(0,0,0,0.5); padding: 5px 10px; border-radius: 5px;">
         <strong>v1.0.0 Alpha</strong><br/>
         FLYCHAIR LAB | CREATOR: BEN
       </div>
+    </div>
+    
+    <!-- Dev Error Overlay -->
+    <div id="dev-error-overlay" style="position:fixed; bottom:20px; left:20px; right:20px; max-height:300px; overflow-y:auto; background:rgba(200,0,0,0.9); color:white; font-family:monospace; font-size:14px; padding:15px; border-left:6px solid #fff; border-radius:8px; z-index:9999; display:none; pointer-events:auto; box-shadow:0 0 20px rgba(255,0,0,0.5);">
+        <strong style="font-size:16px;">🚨 DEV ERROR LOG</strong> 
+        <button onclick="document.getElementById('dev-error-overlay').style.display='none'" style="float:right; background:rgba(255,255,255,0.2); border:1px solid #fff; color:#fff; cursor:pointer; padding:2px 8px; border-radius:4px;">❌ Dismiss</button>
+        <div id="dev-error-content" style="white-space:pre-wrap; margin-top:10px; line-height:1.4;"></div>
     </div>
 
     <!-- Post-Processing Effects Menu (Top Right) -->
@@ -54,7 +59,7 @@
         <button id="btn-toggle-audio" class="audio-toggle-btn" style="position:static;" title="Toggle Sound">🔊</button>
         <button id="btn-toggle-fx" class="glow-btn" style="min-width:auto; padding:8px 15px; font-size:1rem; border-radius:8px;">✨ FX</button>
       </div>
-      <div id="fx-panel" class="hidden-element" style="pointer-events:auto; background:rgba(10,15,25,0.85); backdrop-filter:blur(8px); border:1px solid rgba(100,200,255,0.3); border-radius:8px; padding:15px; margin-top:10px; color:#fff; font-family:'Inter', sans-serif; width:220px; box-shadow: 0 5px 15px rgba(0,0,0,0.6);">
+      <div id="fx-panel" class="hidden-element" style="pointer-events:auto; background:rgba(10,15,25,0.85); backdrop-filter:blur(8px); border:1px solid rgba(100,200,255,0.3); border-radius:8px; padding:15px; margin-top:10px; color:#fff; font-family:'Inter', sans-serif; width:180px; box-shadow: 0 5px 15px rgba(0,0,0,0.6);">
         <h4 style="margin:0 0 10px 0; color:#66ccff; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:5px;">Post-Processing</h4>
         
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
@@ -94,14 +99,31 @@
     </div>
 
     <!-- Hierarchy Outliner Panel (Left Side) -->
-    <div id="hierarchy-panel" class="hidden-element" style="position:fixed; top:120px; left:20px; bottom:120px; z-index:9100; pointer-events:auto; background:rgba(10,15,25,0.85); backdrop-filter:blur(8px); border:1px solid rgba(100,200,255,0.3); border-radius:8px; padding:15px; color:#fff; font-family:'Inter', sans-serif; width:220px; overflow-y:auto; display:flex; flex-direction:column;">
+    <div id="hierarchy-panel" class="hidden-element" style="position:fixed; top:90px; left:20px; bottom:60px; z-index:9100; pointer-events:auto; background:rgba(10,15,25,0.85); backdrop-filter:blur(8px); border:1px solid rgba(100,200,255,0.3); border-radius:8px; padding:15px; color:#fff; font-family:'Inter', sans-serif; width:180px; overflow-y:auto; flex-direction:column;">
+      <!-- Director & Timeline Tools -->
+      <h4 style="margin:0 0 10px 0; color:#ffcc00; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:5px;">
+        Director Tools
+      </h4>
+      <div style="display:flex; flex-direction:column; gap:8px; margin-bottom: 20px;">
+        <button id="btn-debug" style="font-family:'Inter', sans-serif; font-weight:bold; background:rgba(200,100,0,0.8); border:1px solid #ffaa00; padding:8px; border-radius:4px; color:#fff; cursor:pointer;" title="打開分鏡錄製視窗">🎥 導演分鏡編輯器</button>
+        <button id="btn-toggle-editor" style="font-family:'Inter', sans-serif; font-weight:bold; background:rgba(50,150,255,0.8); border:1px solid #66ccff; padding:8px; border-radius:4px; color:#fff; cursor:pointer;" title="開啟時間軸">⏱️ 時間軸播放器</button>
+      </div>
+
       <h4 style="margin:0 0 10px 0; color:#66ccff; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:5px; display:flex; justify-content:space-between; align-items:center;">
         Scene Hierarchy
-        <button id="btn-refresh-hierarchy" style="background:none; border:none; color:#ffcc00; cursor:pointer; font-size:16px;" title="Refresh List">🔄</button>
+        <div>
+          <button id="btn-save-scene" style="background:rgba(50,200,50,0.8); border:1px solid #0f0; color:#fff; cursor:pointer; font-size:12px; font-weight:bold; padding:2px 6px; border-radius:4px; margin-right:5px;" title="Save Transforms">💾 存檔</button>
+          <button id="btn-refresh-hierarchy" style="background:none; border:none; color:#ffcc00; cursor:pointer; font-size:16px;" title="Refresh List">🔄</button>
+        </div>
       </h4>
       <div id="hierarchy-list" style="display:flex; flex-direction:column; gap:4px; font-size:0.85rem;">
         <!-- Hierarchy items will be injected here via JavaScript -->
       </div>
+    </div>
+    
+    <!-- Editor Status Bar (Bottom Center) -->
+    <div id="editor-status-bar" class="hidden-element" style="position:fixed; bottom:5px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.8); border:1px solid rgba(100,200,255,0.4); border-radius:4px; padding:4px 15px; color:#66ccff; font-family:monospace; font-size:12px; z-index:9100; pointer-events:none; transition:opacity 0.2s;">
+      Ready.
     </div>
 
     <!-- Bottom Left Coordinates Panel -->
@@ -115,7 +137,6 @@
 
     <!-- Active Game In-World UI -->
     <div id="game-ui" class="hidden-element">
-      <button id="btn-toggle-editor" class="top-left-editor-btn">🎬 編輯器模式</button>
       <div id="timeline-ui" class="hidden-element">
         <div class="timeline-header">
           <span id="timeline-time">Frame: 000 | 00:00.00</span>

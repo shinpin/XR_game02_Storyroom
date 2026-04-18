@@ -8,6 +8,7 @@ import { parseLevel } from '../levelParser.js';
 import { level3Config } from '../configs/level3_config.js';
 import { world, physicsMaterial } from '../physics.js';
 import { playLevelBGM } from '../audio.js';
+import { restoreSceneState } from '../serializer.js';
 
 export function loadLevel3() {
     clearLevel();
@@ -110,14 +111,43 @@ export function loadLevel3() {
 
         // Place at B positions (near back door)
         const tigerB1 = tigerModel.clone();
+        tigerB1.name = 'Tiger_B1';
+        tigerB1.userData.editable = true;
         tigerB1.position.set(-6, 0, -14);
         tigerB1.rotation.y = Math.PI * 0.8;
         levelGroup.add(tigerB1);
 
         const tigerB2 = tigerModel.clone();
+        tigerB2.name = 'Tiger_B2';
+        tigerB2.userData.editable = true;
         tigerB2.position.set(6, 0, -14);
         tigerB2.rotation.y = -Math.PI * 0.8;
         levelGroup.add(tigerB2);
+    });
+
+    gltfLoader.load('/FOX_ANI.glb?time=' + Date.now(), (gltf) => {
+        const fox = gltf.scene;
+        fox.name = 'Fox_NPC';
+        fox.userData.editable = true;
+        fox.scale.set(3, 3, 3);
+        fox.position.set(-6, 0.5, -5);
+        fox.rotation.y = Math.PI / 4;
+        levelGroup.add(fox);
+        
+        // Setup simple physics collision (cylinder) for the Fox so you can't walk through IT
+        const foxShape = new CANNON.Cylinder(1, 1, 3, 16);
+        const foxBody = new CANNON.Body({ mass: 0, shape: foxShape }); // static
+        foxBody.position.copy(fox.position);
+        foxBody.position.y += 1.5; // Offset cylinder center
+        
+        // Wait until physics world is fully ready, but since it's async load, safe to assume it's created.
+        import('../physics.js').then(({ world }) => {
+            world.addBody(foxBody);
+        });
+        fox.userData.physicsBody = foxBody;
+        
+        // Restore layout overrides if any
+        restoreSceneState(levelGroup);
     });
 
     const gridBaseZ = -5;
@@ -125,6 +155,8 @@ export function loadLevel3() {
 
     // Ceiling Skylight (天井照下來的光)
     const ceilingLight = new THREE.SpotLight(0xaaccff, 800, 40, Math.PI / 6, 0.6, 1);
+    ceilingLight.name = 'CeilingSpotLight';
+    ceilingLight.userData.editable = true;
     ceilingLight.position.set(0, 20, gridBaseZ);
     ceilingLight.target.position.set(0, 0, gridBaseZ);
     ceilingLight.castShadow = true;
@@ -181,10 +213,14 @@ export function loadLevel3() {
     obeGeo.rotateY(Math.PI/4); // Square pyramid alignment
 
     const obe1 = new THREE.Mesh(obeGeo, matStone.clone());
+    obe1.name = 'Pillar_Left';
+    obe1.userData.editable = true;
     obe1.position.set(-tileS*2, 2, gridBaseZ + tileS*2);
     const body1 = createPhysicsObject(obe1, new CANNON.Box(new CANNON.Vec3(0.65, 2, 0.65)), 80, true);
 
     const obe2 = new THREE.Mesh(obeGeo, matStone.clone());
+    obe2.name = 'Pillar_Right';
+    obe2.userData.editable = true;
     obe2.position.set(tileS*2, 2, gridBaseZ + tileS*2);
     const body2 = createPhysicsObject(obe2, new CANNON.Box(new CANNON.Vec3(0.65, 2, 0.65)), 80, true);
 
@@ -195,40 +231,78 @@ export function loadLevel3() {
     obe2.userData.isInteractable = true;
     levelState.interactables.push(obe1, obe2);
 
-    // Central light handled by ceiling skylight above
-
-    // Puzzle Logic
-    let puzzleSolved = false;
-
-    levelState.updatables.push((dt) => {
-        if (puzzleSolved) return;
+    // A+B Implementation: Interactive Pillars and Stone Door
+    let activatedPillars = 0;
+    
+    // Hide the door initially by placing it in the world but scaling it down
+    // The door is located at Z: -18 (edge of the 30x40 floor)
+    let finalDoor = null;
+    let doorPhysicsBody = null;
+    const gltfLoader2 = new GLTFLoader();
+    gltfLoader2.load('/door.glb?time=' + Date.now(), (gltf) => {
+        finalDoor = gltf.scene;
+        finalDoor.name = 'StoneDoor';
+        finalDoor.userData.editable = true;
+        finalDoor.scale.set(0.001, 0.001, 0.001); // Hidden scale
+        finalDoor.position.set(0, 0, -18);
+        levelGroup.add(finalDoor);
         
-        let p1OK = false;
-        let p2OK = false;
-
-        const checkPlate = (obeBody, plateMesh) => {
-            const dx = obeBody.position.x - plateMesh.position.x;
-            const dz = obeBody.position.z - plateMesh.position.z;
-            return (Math.sqrt(dx*dx + dz*dz) < 1.0 && obeBody.position.y < 3);
-        }
-
-        if (checkPlate(body1, targetPlate1) || checkPlate(body2, targetPlate1)) p1OK = true;
-        if (checkPlate(body1, targetPlate2) || checkPlate(body2, targetPlate2)) p2OK = true;
-
-        if (p1OK && p2OK) {
-            puzzleSolved = true;
-            targetPlate1.material.emissive.setHex(0x00ff00);
-            targetPlate2.material.emissive.setHex(0x00ff00);
-            // 第一景保留門，其他景拿掉
-            // createLevelDoor(0, 0.5, -16, 4);
-            import('../audio.js').then(({ playLevelBGM }) => {
-                // optional: play unlocking sound
-            });
-            import('../state.js').then(({ showDialog }) => {
-                showDialog('命運的雙子星已歸位，前方的路徑清晰了。');
-            });
-        }
+        // Create an invisible physics wall blocking the hallway BEFORE the door opens entirely.
+        // It's static so player can't walk past Z = -18 initially.
+        doorPhysicsBody = new CANNON.Body({ 
+            mass: 0, 
+            shape: new CANNON.Box(new CANNON.Vec3(6, 6, 1)) // large wall spanning 12x12
+        });
+        doorPhysicsBody.position.set(0, 6, -18);
+        import('../physics.js').then(({ world }) => world.addBody(doorPhysicsBody));
+        
+        // Restore layout overrides if any
+        restoreSceneState(levelGroup);
     });
 
+    const activatePillar = (obeMesh) => {
+        if (obeMesh.userData.isActivated) return;
+        obeMesh.userData.isActivated = true;
+        activatedPillars++;
+        
+        // Visual feedback
+        obeMesh.material.color.setHex(0xaaaa55);
+        obeMesh.material.emissive.setHex(0xffff00);
+        obeMesh.material.emissiveIntensity = 0.5;
+
+        // BGM or feedback SFX
+        import('../audio.js').then(({ playLevelBGM }) => { /* play sfx */ });
+
+        if (activatedPillars === 2) {
+            import('../state.js').then(({ showDialog }) => {
+                showDialog('封印解除... 古老的門面於深淵中浮現。');
+            });
+            // Reveal Door
+            if (finalDoor) {
+                // simple pop-up animation in update loop
+                levelState.updatables.push((dt) => {
+                    if (finalDoor.scale.x < 9.0) {
+                        finalDoor.scale.addScalar(dt * 10);
+                        finalDoor.position.y = (finalDoor.scale.x / 9.0) * 0.5; // slight rise
+                    }
+                });
+                // Remove physics wall so player can walk through
+                if (doorPhysicsBody) {
+                    import('../physics.js').then(({ world }) => world.removeBody(doorPhysicsBody));
+                }
+            }
+        } else {
+             import('../state.js').then(({ showDialog }) => {
+                showDialog('石柱發出微光，似乎還缺少什麼...');
+            });
+        }
+    };
+
+    // Bind interaction logic to the pillars
+    obe1.userData.onInteract = () => activatePillar(obe1);
+    obe2.userData.onInteract = () => activatePillar(obe2);
+
+    // Initial restore for all synchronous objects
+    restoreSceneState(levelGroup);
 }
 

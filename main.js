@@ -6,8 +6,37 @@ import { scene, camera, renderer, initCore, composer, setBloomState, triggerResi
 import { world, initPhysics } from './src/physics.js';
 import { initAudio, toggleMute } from './src/audio.js';
 import { levelState, keys } from './src/state.js';
+import { initUIManager, UI_MODES, getCurrentMode, setUIMode } from './src/uiManager.js';
+import { saveSceneState } from './src/serializer.js';
+
+// --- Global Error Handler (Dev Mode) ---
+window.addEventListener('error', (event) => {
+    const overlay = document.getElementById('dev-error-overlay');
+    const content = document.getElementById('dev-error-content');
+    if (overlay && content) {
+        overlay.style.display = 'block';
+        content.textContent += `[Error] ${event.message}\n  at ${event.filename}:${event.lineno}\n`;
+    }
+});
+window.addEventListener('unhandledrejection', (event) => {
+    // Check if it's an IDE iframe PointerLock error and ignore it to prevent UI spam
+    const reasonStr = (event.reason && event.reason.message) ? event.reason.message.toLowerCase() : '';
+    if (reasonStr.includes('pointer lock')) {
+        console.warn('PointerLock warning ignored in dev mode.');
+        return;
+    }
+    
+    const overlay = document.getElementById('dev-error-overlay');
+    const content = document.getElementById('dev-error-content');
+    if (overlay && content) {
+        overlay.style.display = 'block';
+        content.textContent += `[Promise Rejection] ${event.reason}\n`;
+    }
+});
 
 window.addEventListener('DOMContentLoaded', () => {
+    initUIManager(); // Initialize UI State Machine hotkeys
+    
     const btnToggleAudio = document.getElementById('btn-toggle-audio');
     if (btnToggleAudio) {
         btnToggleAudio.addEventListener('click', toggleMute);
@@ -304,7 +333,7 @@ document.addEventListener('keydown', (e) => {
     // Toggle Debug Panel (F3 or backtick ~)
     if (e.key === 'F3' || e.key === '`') {
         e.preventDefault();
-        toggleDebugPanel();
+        setUIMode(getCurrentMode() === UI_MODES.GM ? UI_MODES.GAME : UI_MODES.GM);
     }
 });
 
@@ -366,6 +395,7 @@ function refreshHierarchyPanel() {
                 div.style.background = 'rgba(100, 200, 255, 0.2)';
                 div.style.borderColor = '#66ccff';
                 div.style.color = '#fff';
+                showEditorStatus(`選取物件: ${child.name || child.type}`);
             }
         });
 
@@ -374,6 +404,35 @@ function refreshHierarchyPanel() {
 }
 
 document.getElementById('btn-refresh-hierarchy')?.addEventListener('click', refreshHierarchyPanel);
+document.getElementById('btn-save-scene')?.addEventListener('click', () => {
+    saveSceneState(scene);
+    showEditorStatus('💾 增量儲存完成 (Saved)');
+});
+
+window.addEventListener('keydown', (e) => {
+    if (e.ctrlKey && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        const mode = import('./src/uiManager.js').then(m => {
+            if (m.getCurrentMode() === m.UI_MODES.EDITOR) {
+                saveSceneState(scene);
+                showEditorStatus('💾 增量儲存完成 (Saved)');
+            }
+        });
+    }
+});
+
+export function showEditorStatus(msg) {
+    const bar = document.getElementById('editor-status-bar');
+    if (!bar) return;
+    bar.textContent = msg;
+    bar.style.opacity = '1';
+    
+    // clear the timer if it exists
+    if (bar.hideTimeout) clearTimeout(bar.hideTimeout);
+    bar.hideTimeout = setTimeout(() => {
+        bar.style.opacity = '0.3';
+    }, 3000);
+}
 
 // Initialize Edit Controls
 orbitControls = new OrbitControls(camera, renderer.domElement);
@@ -385,63 +444,44 @@ transformControl.addEventListener('dragging-changed', function (event) {
 });
 scene.add(transformControl);
 
-document.getElementById('btn-scene-editor')?.addEventListener('click', () => {
-    isSceneEditor = !isSceneEditor;
-    const btn = document.getElementById('btn-scene-editor');
-    const hierarchyPanel = document.getElementById('hierarchy-panel');
-    const btnPlayPanel = document.getElementById('btn-editor-play');
-    const fxPanel = document.getElementById('fx-panel');
+// Delegate DOM visibility entirely to the State Machine:
+window.addEventListener('ui-mode-changed', (e) => {
+    const mode = e.detail.mode;
     const appContainer = document.getElementById('app');
     
-    if (isSceneEditor) {
+    // We only control WebGL components and app layout in main.js
+    if (mode === UI_MODES.EDITOR) {
+        isSceneEditor = true;
         controls.unlock();
         orbitControls.enabled = true;
-        btn.style.background = 'rgba(200, 0, 200, 1)';
-        btn.innerHTML = '<span>[⚒️] EXIT SCENE EDIT (T/R/S)</span>';
         
-        // IDE Layout Shift (Shrink viewport & show side panels)
-        // Using explicit pixel math to guarantee no CSS calc() issues
-        const newW = window.innerWidth - 480;
-        const newH = window.innerHeight - 100;
+        // IDE Layout Shift (Shrink viewport)
+        const newW = window.innerWidth - 410;
+        const newH = window.innerHeight - 70;
         appContainer.style.width = newW + 'px';
-        appContainer.style.left = '240px';
-        appContainer.style.top = '100px';
+        appContainer.style.left = '210px';
+        appContainer.style.top = '70px';
         appContainer.style.height = newH + 'px';
-        
         triggerResize();
         
-        if (hierarchyPanel) {
-            hierarchyPanel.classList.remove('hidden-element');
-            refreshHierarchyPanel();
-        }
-        if (btnPlayPanel) {
-            btnPlayPanel.style.display = 'block';
-            isTimelinePlaying = false;
-            btnPlayPanel.innerHTML = '<span>▶️ 播放場景動畫 (Paused)</span>';
-        }
-        if (fxPanel) fxPanel.classList.remove('hidden-element');
+        refreshHierarchyPanel();
+        isTimelinePlaying = false;
         
-        const coordPanel = document.getElementById('coord-panel');
-        if(coordPanel) coordPanel.classList.remove('hidden-element');
     } else {
+        isSceneEditor = false;
         orbitControls.enabled = false;
         transformControl.detach();
-        btn.style.background = 'rgba(120, 40, 200, 0.8)';
-        btn.innerHTML = '<span>[⚒️] SCENE EDITOR</span>';
         
-        // Restore standard layout
+        // Restore standard full layout
         appContainer.style.width = '100vw';
         appContainer.style.left = '0px';
         appContainer.style.top = '0px';
         appContainer.style.height = '100vh';
-        
         triggerResize();
         
-        if (hierarchyPanel) hierarchyPanel.classList.add('hidden-element');
-        if (btnPlayPanel) btnPlayPanel.style.display = 'none';
-        
-        if (document.getElementById('game-ui')?.style.display !== 'none') {
-            controls.lock(); // Only lock if game is actually running
+        // Only lock if we returned to game from in-game, not menu
+        if (mode === UI_MODES.GAME && document.getElementById('game-ui')?.style.display !== 'none') {
+            controls.lock(); 
         }
     }
 });
@@ -457,9 +497,43 @@ document.getElementById('btn-editor-play')?.addEventListener('click', (e) => {
     }
 });
 
+let isRightMouseDown = false;
+
+renderer.domElement.addEventListener('pointerdown', (e) => {
+    if (e.button === 2) isRightMouseDown = true;
+});
+renderer.domElement.addEventListener('pointerup', (e) => {
+    if (e.button === 2) isRightMouseDown = false;
+});
+renderer.domElement.addEventListener('pointerleave', () => {
+    isRightMouseDown = false;
+});
+
 // Raycasting for generic scene manipulations
 renderer.domElement.addEventListener('pointerdown', (event) => {
-    if (!isSceneEditor) return;
+    if (!isSceneEditor) {
+        // [Game Mode] Interacting with objects in First-Person
+        if (!controls.isLocked) return;
+        
+        // Raycast straight from center of camera
+        raycasterEditor.setFromCamera(new THREE.Vector2(0, 0), camera);
+        const intersects = raycasterEditor.intersectObjects(levelState.interactables, true);
+        
+        if (intersects.length > 0) {
+            let hitObj = intersects[0].object;
+            // Traverse up to find the object that actually holds the userData
+            while(hitObj && !hitObj.userData.onInteract && hitObj.parent) {
+                hitObj = hitObj.parent;
+            }
+            
+            if (hitObj && hitObj.userData.onInteract) {
+                hitObj.userData.onInteract();
+            }
+        }
+        return;
+    }
+    
+    // [Editor Mode] Select and Manipulate
     if (transformControl.dragging) return;
     
     // Normalize mouse coords using exact bounding client rect bounds since we dynamically shrink and shift the canvas
@@ -529,15 +603,16 @@ document.getElementById('start-btn').addEventListener('click', () => {
 
 // Help UI & Top UI bindings
 const helpModal = document.getElementById('help-modal');
-document.getElementById('btn-show-help').addEventListener('click', () => {
-    helpModal.classList.remove('hidden-element');
-});
-document.getElementById('btn-close-help').addEventListener('click', () => {
-    helpModal.classList.add('hidden-element');
-});
-document.getElementById('btn-toggle-debug-ui').addEventListener('click', () => {
-    toggleDebugPanel();
-});
+if (helpModal) {
+    document.getElementById('btn-show-help')?.addEventListener('click', () => {
+        helpModal.classList.remove('hidden-element');
+    });
+    document.getElementById('btn-close-help')?.addEventListener('click', () => {
+        helpModal.classList.add('hidden-element');
+    });
+}
+// btn-toggle-debug-ui is already bound in uiManager.js
+
 function returnToMenu() {
     controls.unlock();
     if (isAutoMode) stopAutoNarrative();
@@ -591,6 +666,26 @@ const telekDistance = 5;
 renderer.setAnimationLoop(() => {
     const rawDt = clock.getDelta();
     const dt = Math.min(rawDt, 0.1);
+    
+    // Editor Camera Flight Logic (Plan B)
+    if (isSceneEditor && isRightMouseDown) {
+        const flightSpeed = moveSpeed * dt * 2.0; // Fly a bit faster
+        const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+        const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
+        // upward relies on world Y, so it's intuitive
+        const up = new THREE.Vector3(0, 1, 0); 
+        
+        const offset = new THREE.Vector3(0,0,0);
+        if (keys.w) offset.addScaledVector(forward, flightSpeed);
+        if (keys.s) offset.addScaledVector(forward, -flightSpeed);
+        if (keys.a) offset.addScaledVector(right, -flightSpeed);
+        if (keys.d) offset.addScaledVector(right, flightSpeed);
+        if (keys.e) offset.addScaledVector(up, flightSpeed);
+        if (keys.q) offset.addScaledVector(up, -flightSpeed);
+
+        camera.position.add(offset);
+        orbitControls.target.add(offset);
+    }
     
     // Pause physics/animations if editor is open and playback is not toggled
     const isPlaybackZero = isSceneEditor && !isTimelinePlaying;

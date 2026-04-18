@@ -63,3 +63,17 @@
 2.  **破圖裁切 (Camera Far Plane)**：如果在 `core.js` 裡相機最遠只能看 100m，那放大腳邊的地板只會讓你看到一刀切痕的黑色斷層。
 3.  **無謂吃效能**：巨大但空曠的地板會大幅損耗無效的 Fragment Shader 算力。
 *   **最佳決策**：如同現況，不盲目擴張地板，而是採取「關卡物件收攏」策略。
+
+---
+
+## 🚀 4. 效能與介面架構 (Performance & UI Architecture)
+
+### 知識點：DOM vs WebGL 的算繪衝突 (GC Thrashing)
+*   **情境描述**：如果我們希望畫面上有上百個資訊浮窗（例如 FPS 數字、NPC 血條），把它們寫成原生的 HTML `<div>`，並在遊戲迴圈 (`requestAnimationFrame`) 裡更新它們的 `.style`，會發生什麼事？
+*   **為何不該這麼做 (掉幀元凶)**：
+    1.  **CPU 計算瓶頸**：3D Canvas 是交由 GPU 以極速黑魔法進行繪製，而 HTML DOM 是瀏覽器引擎由 CPU 處理。每一次變更 DOM 樣式，瀏覽器都必須觸發 **Reflow (重新排版)** 和 **Repaint (重繪)**。
+    2.  **垃圾回收抖動 (GC Thrashing)**：在每秒 60 次的渲染迴圈中頻繁操作 DOM，會製造大量微小的記憶體碎片。當瀏覽器進行垃圾回收 (GC) 時，CPU 運算會被強制暫停，反映在 VR 或畫面上就是致命的突發性卡頓 (Stutter)。
+*   **工程學解法**：
+    1.  絕不針對單一 UI 節點瘋狂調用 `element.style.display = 'none'`。
+    2.  **批次狀態管理 (Layer Wrappers)**：將 UI 打包為 `<div id="layer-game">` 等大外框，只切換父節點的狀態，避免不必要的重繪。
+    3.  把跟隨鏡頭的高頻率跳動 UI（如血條），改用 Three.js 原生的 `CSS2DRenderer` 或直接寫入 WebGL Shader 中。
